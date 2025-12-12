@@ -39,3 +39,16 @@ func TestFormatGmailDate(t *testing.T) {
 		t.Fatalf("unexpected: %q", got)
 	}
 }
+
+func TestFirstMessage(t *testing.T) {
+	if firstMessage(nil) != nil {
+		t.Fatalf("expected nil")
+	}
+	if firstMessage(&gmail.Thread{}) != nil {
+		t.Fatalf("expected nil")
+	}
+	m := &gmail.Message{Id: "m1"}
+	if got := firstMessage(&gmail.Thread{Messages: []*gmail.Message{m}}); got == nil || got.Id != "m1" {
+		t.Fatalf("unexpected: %#v", got)
+	}
+}

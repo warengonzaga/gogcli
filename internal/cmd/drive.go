@@ -872,10 +872,10 @@ func downloadDriveFile(ctx context.Context, svc *drive.Service, meta *drive.File
 	if isGoogleDoc {
 		exportMimeType := driveExportMimeType(meta.MimeType)
 		outPath = replaceExt(destPath, driveExportExtension(exportMimeType))
-		resp, err = svc.Files.Export(meta.Id, exportMimeType).Context(ctx).Download()
+		resp, err = driveExportDownload(ctx, svc, meta.Id, exportMimeType)
 	} else {
 		outPath = destPath
-		resp, err = svc.Files.Get(meta.Id).SupportsAllDrives(true).Context(ctx).Download()
+		resp, err = driveDownload(ctx, svc, meta.Id)
 	}
 	if err != nil {
 		return "", 0, err
@@ -898,6 +898,14 @@ func downloadDriveFile(ctx context.Context, svc *drive.Service, meta *drive.File
 		return "", 0, err
 	}
 	return outPath, n, nil
+}
+
+var driveDownload = func(ctx context.Context, svc *drive.Service, fileID string) (*http.Response, error) {
+	return svc.Files.Get(fileID).SupportsAllDrives(true).Context(ctx).Download()
+}
+
+var driveExportDownload = func(ctx context.Context, svc *drive.Service, fileID string, mimeType string) (*http.Response, error) {
+	return svc.Files.Export(fileID, mimeType).Context(ctx).Download()
 }
 
 func replaceExt(path string, ext string) string {

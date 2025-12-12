@@ -135,3 +135,27 @@ func TestOptionsForAccountScopes_HappyPath(t *testing.T) {
 		t.Fatalf("expected client options")
 	}
 }
+
+func TestOptionsForAccount_HappyPath(t *testing.T) {
+	origRead := readClientCredentials
+	origOpen := openSecretsStore
+	t.Cleanup(func() {
+		readClientCredentials = origRead
+		openSecretsStore = origOpen
+	})
+
+	readClientCredentials = func() (config.ClientCredentials, error) {
+		return config.ClientCredentials{ClientID: "id", ClientSecret: "secret"}, nil
+	}
+	openSecretsStore = func() (secrets.Store, error) {
+		return &stubStore{tok: secrets.Token{Email: "a@b.com", RefreshToken: "rt"}}, nil
+	}
+
+	opts, err := optionsForAccount(context.Background(), googleauth.ServiceDrive, "a@b.com")
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if len(opts) == 0 {
+		t.Fatalf("expected client options")
+	}
+}
