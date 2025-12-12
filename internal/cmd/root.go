@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/steipete/gogcli/internal/errfmt"
@@ -22,11 +23,37 @@ func Execute(args []string) error {
 
 	root := &cobra.Command{
 		Use:           "gog",
+		Short:         "Google CLI for Gmail/Calendar/Drive/Contacts",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		CompletionOptions: cobra.CompletionOptions{
 			DisableDefaultCmd: true,
 		},
+		Example: strings.TrimSpace(`
+  # One-time setup (OAuth)
+  gog auth credentials ~/path/to/credentials.json
+  gog auth add you@gmail.com
+
+  # Avoid repeating --account
+  export GOG_ACCOUNT=you@gmail.com
+
+  # Gmail
+  gog gmail search 'newer_than:7d' --max 10
+  gog gmail thread <threadId>
+  gog gmail labels get INBOX --output=json
+
+  # Calendar
+  gog calendar calendars
+  gog calendar events <calendarId> --from 2025-01-01T00:00:00Z --to 2025-01-08T00:00:00Z --max 50
+
+  # Contacts
+  gog contacts list --max 50
+  gog contacts search "Ada" --max 50
+  gog contacts other list --max 50
+
+  # Parseable output
+  gog --output=json drive ls --max 5 | jq .
+`),
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			mode, err := outfmt.Parse(flags.Output)
 			if err != nil {
