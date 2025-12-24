@@ -259,3 +259,39 @@ func TestDecodeGmailPushPayload_NumberHistoryID(t *testing.T) {
 		t.Fatalf("unexpected history id: %q", got.HistoryID)
 	}
 }
+
+func TestDecodeGmailPushPayload_StringHistoryID(t *testing.T) {
+	payload, err := json.Marshal(map[string]any{
+		"emailAddress": "a@b.com",
+		"historyId":    "5678",
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	env := &pubsubPushEnvelope{}
+	env.Message.Data = base64.StdEncoding.EncodeToString(payload)
+	got, err := decodeGmailPushPayload(env)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if got.HistoryID != "5678" {
+		t.Fatalf("unexpected history id: %q", got.HistoryID)
+	}
+}
+
+func TestDecodeGmailPushPayload_InvalidHistoryID(t *testing.T) {
+	payload, err := json.Marshal(map[string]any{
+		"emailAddress": "a@b.com",
+		"historyId":    map[string]any{"bad": "value"},
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	env := &pubsubPushEnvelope{}
+	env.Message.Data = base64.StdEncoding.EncodeToString(payload)
+	if _, err := decodeGmailPushPayload(env); err == nil {
+		t.Fatalf("expected error")
+	}
+}
