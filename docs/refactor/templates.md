@@ -1,0 +1,20 @@
+# googleauth templates (embed)
+
+Problem: huge `templates*.go` files, noisy diffs, hard to edit.
+
+## Current setup
+
+- HTML lives in `internal/googleauth/templates/*.html`
+- Go glue in `internal/googleauth/templates_embed.go` (`//go:embed`)
+- Variable names preserved:
+  - `accountsTemplate`
+  - `successTemplateNew`
+  - `successTemplate`
+  - `errorTemplate`
+  - `cancelledTemplate`
+
+## Editing flow
+
+- Edit the HTML files directly.
+- Run `make test` (or `go test ./...`) to confirm templates still parse + handlers still render.
+

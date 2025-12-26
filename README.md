@@ -123,6 +123,8 @@ If you need to add services later and Google doesn't return a refresh token, re-
 
 ```bash
 gog auth add you@gmail.com --services all --force-consent
+# Or add just Sheets
+gog auth add you@gmail.com --services sheets --force-consent
 ```
 
 ### Environment Variables
@@ -509,6 +511,19 @@ gog gmail search 'is:unread'
 # Convert CSV to pipe-delimited format and update sheet
 cat data.csv | tr ',' '|' | \
   gog sheets update <spreadsheetId> 'Sheet1!A1'
+```
+
+### Export Sheets / Docs / Slides
+
+```bash
+# Sheets
+gog sheets export <spreadsheetId> --format pdf
+
+# Docs
+gog docs export <docId> --format docx
+
+# Slides
+gog slides export <presentationId> --format pptx
 ```
 
 ### Batch process Gmail threads

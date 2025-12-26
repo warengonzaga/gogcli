@@ -17,6 +17,10 @@
 
 - Gmail: `gog gmail attachment` download now works reliably; avoid re-fetching payload for filename inference and accept padded base64 responses.
 
+### Changed
+
+- Internal: reduce duplicate code for Drive-backed exports and tabular/paging output; embed auth UI templates as HTML assets.
+
 ## 0.3.0 - 2025-12-26
 
 ### Added
