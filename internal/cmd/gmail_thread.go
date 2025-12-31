@@ -16,11 +16,21 @@ import (
 )
 
 func newGmailThreadCmd(flags *rootFlags) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "thread",
+		Short: "Thread operations (get, modify)",
+	}
+	cmd.AddCommand(newGmailThreadGetCmd(flags))
+	cmd.AddCommand(newGmailThreadModifyCmd(flags))
+	return cmd
+}
+
+func newGmailThreadGetCmd(flags *rootFlags) *cobra.Command {
 	var download bool
 	var outDir string
 
 	cmd := &cobra.Command{
-		Use:   "thread <threadId>",
+		Use:   "get <threadId>",
 		Short: "Get a thread with all messages (optionally download attachments)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -144,6 +154,77 @@ func newGmailThreadCmd(flags *rootFlags) *cobra.Command {
 
 	cmd.Flags().BoolVar(&download, "download", false, "Download attachments")
 	cmd.Flags().StringVar(&outDir, "out-dir", "", "Directory to write attachments to (default: current directory)")
+	return cmd
+}
+
+func newGmailThreadModifyCmd(flags *rootFlags) *cobra.Command {
+	var add string
+	var remove string
+
+	cmd := &cobra.Command{
+		Use:   "modify <threadId>",
+		Short: "Modify labels on all messages in a thread",
+		Long: `Modify labels on all messages within a thread. This applies the label changes
+to every message in the conversation, which is useful for archiving or categorizing
+entire email threads at once.
+
+Examples:
+  gog gmail thread modify abc123 --add "Work,Important"
+  gog gmail thread modify abc123 --remove INBOX --add "Archive"
+  gog gmail thread modify abc123 --add STARRED`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			u := ui.FromContext(cmd.Context())
+			account, err := requireAccount(flags)
+			if err != nil {
+				return err
+			}
+			threadID := args[0]
+
+			addLabels := splitCSV(add)
+			removeLabels := splitCSV(remove)
+			if len(addLabels) == 0 && len(removeLabels) == 0 {
+				return errors.New("must specify --add and/or --remove")
+			}
+
+			svc, err := newGmailService(cmd.Context(), account)
+			if err != nil {
+				return err
+			}
+
+			// Resolve label names to IDs
+			idMap, err := fetchLabelNameToID(svc)
+			if err != nil {
+				return err
+			}
+
+			addIDs := resolveLabelIDs(addLabels, idMap)
+			removeIDs := resolveLabelIDs(removeLabels, idMap)
+
+			// Use Gmail's Threads.Modify API
+			_, err = svc.Users.Threads.Modify("me", threadID, &gmail.ModifyThreadRequest{
+				AddLabelIds:    addIDs,
+				RemoveLabelIds: removeIDs,
+			}).Context(cmd.Context()).Do()
+			if err != nil {
+				return err
+			}
+
+			if outfmt.IsJSON(cmd.Context()) {
+				return outfmt.WriteJSON(os.Stdout, map[string]any{
+					"modified":      threadID,
+					"addedLabels":   addIDs,
+					"removedLabels": removeIDs,
+				})
+			}
+
+			u.Out().Printf("Modified thread %s", threadID)
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVar(&add, "add", "", "Labels to add (comma-separated, name or ID)")
+	cmd.Flags().StringVar(&remove, "remove", "", "Labels to remove (comma-separated, name or ID)")
 	return cmd
 }
 

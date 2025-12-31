@@ -86,7 +86,7 @@ func TestExecute_GmailThread_Text_Download(t *testing.T) {
 
 	out := captureStdout(t, func() {
 		_ = captureStderr(t, func() {
-			if execErr := Execute([]string{"--account", "a@b.com", "gmail", "thread", "t-thread-1", "--download"}); execErr != nil {
+			if execErr := Execute([]string{"--account", "a@b.com", "gmail", "thread", "get", "t-thread-1", "--download"}); execErr != nil {
 				t.Fatalf("Execute: %v", execErr)
 			}
 		})
@@ -238,7 +238,7 @@ func TestExecute_GmailThread_OutDir_CreatesParents_JSON(t *testing.T) {
 				if execErr := Execute([]string{
 					"--json",
 					"--account", "a@b.com",
-					"gmail", "thread", "t-thread-1",
+					"gmail", "thread", "get", "t-thread-1",
 					"--download",
 					"--out-dir", outDir,
 				}); execErr != nil {

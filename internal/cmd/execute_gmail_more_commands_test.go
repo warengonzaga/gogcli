@@ -135,7 +135,7 @@ func TestExecute_GmailThreadDraftsSend_JSON(t *testing.T) {
 
 	_ = captureStderr(t, func() {
 		out := captureStdout(t, func() {
-			if err := Execute([]string{"--json", "--account", "a@b.com", "gmail", "thread", "t1", "--download"}); err != nil {
+			if err := Execute([]string{"--json", "--account", "a@b.com", "gmail", "thread", "get", "t1", "--download"}); err != nil {
 				t.Fatalf("thread: %v", err)
 			}
 		})
