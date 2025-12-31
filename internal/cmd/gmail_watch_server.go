@@ -20,6 +20,11 @@ import (
 
 var errNoNewMessages = errors.New("no new messages")
 
+const (
+	gmailWatchFormatMetadata  = "metadata"
+	gmailWatchStatusHTTPError = "http_error"
+)
+
 type gmailWatchServer struct {
 	cfg        gmailWatchServeConfig
 	store      *gmailWatchStore
@@ -226,7 +231,7 @@ func (s *gmailWatchServer) resyncHistory(ctx context.Context, svc *gmail.Service
 
 func (s *gmailWatchServer) fetchMessages(ctx context.Context, svc *gmail.Service, ids []string) ([]gmailHookMessage, error) {
 	messages := make([]gmailHookMessage, 0, len(ids))
-	format := "metadata"
+	format := gmailWatchFormatMetadata
 	if s.cfg.IncludeBody {
 		format = "full"
 	}
@@ -290,7 +295,7 @@ func (s *gmailWatchServer) sendHook(ctx context.Context, payload *gmailHookPaylo
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		_ = s.store.Update(func(state *gmailWatchState) error {
-			state.LastDeliveryStatus = "http_error"
+			state.LastDeliveryStatus = gmailWatchStatusHTTPError
 			state.LastDeliveryAtMs = time.Now().UnixMilli()
 			state.LastDeliveryStatusNote = fmt.Sprintf("status %d", resp.StatusCode)
 			return nil

@@ -20,6 +20,7 @@ func TestParseService(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ParseService(%q) err: %v", tt.in, err)
 		}
+
 		if got != tt.want {
 			t.Fatalf("ParseService(%q) = %q, want %q", tt.in, got, tt.want)
 		}
@@ -37,6 +38,7 @@ func TestExtractCodeAndState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
+
 	if code != "abc" || state != "xyz" {
 		t.Fatalf("unexpected: code=%q state=%q", code, state)
 	}
@@ -46,6 +48,7 @@ func TestExtractCodeAndState_Errors(t *testing.T) {
 	if _, _, err := extractCodeAndState("not a url"); err == nil {
 		t.Fatalf("expected error")
 	}
+
 	if _, _, err := extractCodeAndState("http://localhost:1/?state=xyz"); err == nil {
 		t.Fatalf("expected error")
 	}
@@ -57,9 +60,11 @@ func TestAllServices(t *testing.T) {
 		t.Fatalf("unexpected: %v", svcs)
 	}
 	seen := make(map[Service]bool)
+
 	for _, s := range svcs {
 		seen[s] = true
 	}
+
 	for _, want := range []Service{ServiceGmail, ServiceCalendar, ServiceDrive, ServiceContacts, ServiceTasks, ServicePeople, ServiceSheets} {
 		if !seen[want] {
 			t.Fatalf("missing %q", want)
@@ -72,6 +77,7 @@ func TestScopesForServices_UnionSorted(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
+
 	if len(scopes) < 3 {
 		t.Fatalf("unexpected scopes: %v", scopes)
 	}
@@ -98,6 +104,7 @@ func TestScopesForServices_UnionSorted(t *testing.T) {
 				break
 			}
 		}
+
 		if !found {
 			t.Fatalf("missing scope %q in %v", w, scopes)
 		}

@@ -10,9 +10,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/steipete/gogcli/internal/ui"
 	"google.golang.org/api/option"
 	"google.golang.org/api/people/v1"
+
+	"github.com/steipete/gogcli/internal/ui"
 )
 
 func TestContactsListAndGet_NoResults_Text(t *testing.T) {

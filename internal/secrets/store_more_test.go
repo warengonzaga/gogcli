@@ -12,6 +12,7 @@ func TestKeyringStore_SetToken_Validation(t *testing.T) {
 	if err := s.SetToken("", Token{RefreshToken: "rt"}); err == nil {
 		t.Fatalf("expected error for missing email")
 	}
+
 	if err := s.SetToken("a@b.com", Token{}); err == nil {
 		t.Fatalf("expected error for missing refresh token")
 	}
@@ -29,6 +30,7 @@ func TestParseTokenKey_RejectsEmpty(t *testing.T) {
 	if _, ok := ParseTokenKey("token:"); ok {
 		t.Fatalf("expected not ok")
 	}
+
 	if _, ok := ParseTokenKey("token:   "); ok {
 		t.Fatalf("expected not ok")
 	}
@@ -36,17 +38,30 @@ func TestParseTokenKey_RejectsEmpty(t *testing.T) {
 
 func TestFileKeyringPasswordFuncFrom(t *testing.T) {
 	pf := fileKeyringPasswordFuncFrom("secret", false)
-	got, err := pf("prompt")
-	if err != nil || got != "secret" {
-		t.Fatalf("expected secret, got %q err=%v", got, err)
+	res := func() struct {
+		got string
+		err error
+	} {
+		got, err := pf("prompt")
+
+		return struct {
+			got string
+			err error
+		}{got: got, err: err}
+	}()
+
+	if res.err != nil || res.got != "secret" {
+		t.Fatalf("expected secret, got %q err=%v", res.got, res.err)
 	}
 
 	pf = fileKeyringPasswordFuncFrom("", true)
+
 	if pf == nil {
 		t.Fatalf("expected terminal prompt func")
 	}
 
 	pf = fileKeyringPasswordFuncFrom("", false)
+
 	if _, err := pf("prompt"); err == nil {
 		t.Fatalf("expected error without tty")
 	}
@@ -55,8 +70,19 @@ func TestFileKeyringPasswordFuncFrom(t *testing.T) {
 func TestFileKeyringPasswordFunc(t *testing.T) {
 	t.Setenv(keyringPasswordEnv, "secret")
 	pf := fileKeyringPasswordFunc()
-	got, err := pf("prompt")
-	if err != nil || got != "secret" {
-		t.Fatalf("expected secret, got %q err=%v", got, err)
+	res := func() struct {
+		got string
+		err error
+	} {
+		got, err := pf("prompt")
+
+		return struct {
+			got string
+			err error
+		}{got: got, err: err}
+	}()
+
+	if res.err != nil || res.got != "secret" {
+		t.Fatalf("expected secret, got %q err=%v", res.got, res.err)
 	}
 }

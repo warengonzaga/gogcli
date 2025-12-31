@@ -19,26 +19,35 @@ func TestAuthURLParams(t *testing.T) {
 	}
 
 	u1 := cfg.AuthCodeURL("state", authURLParams(false)...)
-	parsed1, err := url.Parse(u1)
-	if err != nil {
+	var parsed1 *url.URL
+
+	if p, err := url.Parse(u1); err != nil {
 		t.Fatalf("parse: %v", err)
+	} else {
+		parsed1 = p
 	}
-	q1 := parsed1.Query()
-	if q1.Get("access_type") != "offline" {
-		t.Fatalf("expected offline, got: %q", q1.Get("access_type"))
+
+	if accessType := parsed1.Query().Get("access_type"); accessType != "offline" {
+		t.Fatalf("expected offline, got: %q", accessType)
 	}
-	if q1.Get("include_granted_scopes") != "true" {
-		t.Fatalf("expected include_granted_scopes=true, got: %q", q1.Get("include_granted_scopes"))
+
+	if includeScopes := parsed1.Query().Get("include_granted_scopes"); includeScopes != "true" {
+		t.Fatalf("expected include_granted_scopes=true, got: %q", includeScopes)
 	}
-	if q1.Get("prompt") != "" {
-		t.Fatalf("expected no prompt, got: %q", q1.Get("prompt"))
+
+	if prompt := parsed1.Query().Get("prompt"); prompt != "" {
+		t.Fatalf("expected no prompt, got: %q", prompt)
 	}
 
 	u2 := cfg.AuthCodeURL("state", authURLParams(true)...)
-	parsed2, err := url.Parse(u2)
-	if err != nil {
+	var parsed2 *url.URL
+
+	if p, err := url.Parse(u2); err != nil {
 		t.Fatalf("parse: %v", err)
+	} else {
+		parsed2 = p
 	}
+
 	if parsed2.Query().Get("prompt") != "consent" {
 		t.Fatalf("expected consent prompt, got: %q", parsed2.Query().Get("prompt"))
 	}
@@ -47,14 +56,22 @@ func TestAuthURLParams(t *testing.T) {
 func TestRandomState(t *testing.T) {
 	t.Parallel()
 
-	s1, err := randomState()
-	if err != nil {
+	var s1 string
+
+	if state, err := randomState(); err != nil {
 		t.Fatalf("randomState: %v", err)
+	} else {
+		s1 = state
 	}
-	s2, err := randomState()
-	if err != nil {
+
+	var s2 string
+
+	if state, err := randomState(); err != nil {
 		t.Fatalf("randomState: %v", err)
+	} else {
+		s2 = state
 	}
+
 	if s1 == "" || s2 == "" || s1 == s2 {
 		t.Fatalf("expected two non-empty distinct states")
 	}

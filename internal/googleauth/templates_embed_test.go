@@ -28,14 +28,20 @@ func TestEmbeddedTemplates_Parse(t *testing.T) {
 		if tc.src == "" {
 			t.Fatalf("%s template is empty", tc.name)
 		}
-		tmpl, err := template.New(tc.name).Parse(tc.src)
-		if err != nil {
+
+		var tmpl *template.Template
+
+		if parsed, err := template.New(tc.name).Parse(tc.src); err != nil {
 			t.Fatalf("%s parse: %v", tc.name, err)
+		} else {
+			tmpl = parsed
 		}
 		var buf bytes.Buffer
+
 		if execErr := tmpl.Execute(&buf, tc.data); execErr != nil {
 			t.Fatalf("%s execute: %v", tc.name, execErr)
 		}
+
 		if buf.Len() == 0 {
 			t.Fatalf("%s execute: empty output", tc.name)
 		}

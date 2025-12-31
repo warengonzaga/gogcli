@@ -7,8 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/steipete/gogcli/internal/ui"
 	"google.golang.org/api/idtoken"
+
+	"github.com/steipete/gogcli/internal/ui"
 )
 
 func TestGmailWatchServeCmd_UsesStoredHook(t *testing.T) {

@@ -23,12 +23,14 @@ func (s *tasksStubStore) GetToken(string) (secrets.Token, error) {
 	if s.err != nil {
 		return secrets.Token{}, s.err
 	}
+
 	return s.tok, nil
 }
 
 func TestNewTasks(t *testing.T) {
 	origRead := readClientCredentials
 	origOpen := openSecretsStore
+
 	t.Cleanup(func() {
 		readClientCredentials = origRead
 		openSecretsStore = origOpen
@@ -45,6 +47,7 @@ func TestNewTasks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewTasks: %v", err)
 	}
+
 	if svc == nil {
 		t.Fatalf("expected service")
 	}

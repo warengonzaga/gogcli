@@ -10,10 +10,12 @@ func TestFromFlags(t *testing.T) {
 	if _, err := FromFlags(true, true); err == nil {
 		t.Fatalf("expected error when combining --json and --plain")
 	}
+
 	got, err := FromFlags(true, false)
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
+
 	if !got.JSON || got.Plain {
 		t.Fatalf("unexpected mode: %#v", got)
 	}
@@ -21,10 +23,12 @@ func TestFromFlags(t *testing.T) {
 
 func TestContextMode(t *testing.T) {
 	ctx := context.Background()
+
 	if IsJSON(ctx) || IsPlain(ctx) {
 		t.Fatalf("expected default text")
 	}
 	ctx = WithMode(ctx, Mode{JSON: true})
+
 	if !IsJSON(ctx) || IsPlain(ctx) {
 		t.Fatalf("expected json-only")
 	}
@@ -35,6 +39,7 @@ func TestWriteJSON(t *testing.T) {
 	if err := WriteJSON(&buf, map[string]any{"ok": true}); err != nil {
 		t.Fatalf("err: %v", err)
 	}
+
 	if buf.Len() == 0 {
 		t.Fatalf("expected output")
 	}
@@ -44,6 +49,7 @@ func TestFromEnvAndParseError(t *testing.T) {
 	t.Setenv("GOG_JSON", "yes")
 	t.Setenv("GOG_PLAIN", "0")
 	mode := FromEnv()
+
 	if !mode.JSON || mode.Plain {
 		t.Fatalf("unexpected env mode: %#v", mode)
 	}

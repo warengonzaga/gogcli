@@ -16,10 +16,13 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/oauth2"
+
 	"github.com/steipete/gogcli/internal/config"
 	"github.com/steipete/gogcli/internal/secrets"
-	"golang.org/x/oauth2"
 )
+
+var errBoom = errors.New("boom")
 
 type fakeStore struct {
 	tokens       []secrets.Token
@@ -39,9 +42,11 @@ func (s *fakeStore) Keys() ([]string, error) { return nil, nil }
 func (s *fakeStore) SetToken(email string, tok secrets.Token) error {
 	s.setTokenEmail = email
 	s.setTokenValue = tok
+
 	if s.setTokenErr != nil {
 		return s.setTokenErr
 	}
+
 	return nil
 }
 func (s *fakeStore) GetToken(string) (secrets.Token, error) { return secrets.Token{}, nil }
@@ -50,6 +55,7 @@ func (s *fakeStore) DeleteToken(email string) error {
 	if s.deleteErr != nil {
 		return s.deleteErr
 	}
+
 	return nil
 }
 
@@ -57,15 +63,18 @@ func (s *fakeStore) ListTokens() ([]secrets.Token, error) {
 	if s.listErr != nil {
 		return nil, s.listErr
 	}
+
 	return append([]secrets.Token(nil), s.tokens...), nil
 }
 func (s *fakeStore) GetDefaultAccount() (string, error) { return s.defaultEmail, nil }
 func (s *fakeStore) SetDefaultAccount(email string) error {
 	s.setDefaultCalled = email
 	s.defaultEmail = email
+
 	if s.setDefaultErr != nil {
 		return s.setDefaultErr
 	}
+
 	return nil
 }
 
@@ -80,28 +89,33 @@ func TestManageServer_HandleAccountsPage(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status: %d", rr.Code)
 	}
+
 	if ct := rr.Header().Get("Content-Type"); !strings.Contains(ct, "text/html") {
 		t.Fatalf("content-type: %q", ct)
 	}
-	body := rr.Body.String()
-	if strings.TrimSpace(body) == "" {
+
+	if body := rr.Body.String(); strings.TrimSpace(body) == "" {
 		tmpl, err := template.New("accounts").Parse(accountsTemplate)
 		if err != nil {
 			t.Fatalf("expected body, parse err=%v", err)
 		}
 		var buf bytes.Buffer
 		execErr := tmpl.Execute(&buf, struct{ CSRFToken string }{CSRFToken: "csrf"})
+
 		t.Fatalf("expected body; handler wrote 0 bytes; direct execute bytes=%d err=%v", buf.Len(), execErr)
-	}
-	if !strings.Contains(body, "csrfToken") || !strings.Contains(body, "const csrfToken") {
-		t.Fatalf("expected csrf js in body")
-	}
-	if !strings.Contains(body, "'csrf'") && !strings.Contains(body, "\"csrf\"") {
-		excerpt := body
-		if len(excerpt) > 200 {
-			excerpt = excerpt[:200]
+	} else {
+		if !strings.Contains(body, "csrfToken") || !strings.Contains(body, "const csrfToken") {
+			t.Fatalf("expected csrf js in body")
 		}
-		t.Fatalf("expected rendered token, body excerpt=%q", excerpt)
+
+		if !strings.Contains(body, "'csrf'") && !strings.Contains(body, "\"csrf\"") {
+			excerpt := body
+			if len(excerpt) > 200 {
+				excerpt = excerpt[:200]
+			}
+
+			t.Fatalf("expected rendered token, body excerpt=%q", excerpt)
+		}
 	}
 }
 
@@ -127,9 +141,11 @@ func TestManageServer_HandleListAccounts_DefaultFirst(t *testing.T) {
 	var parsed struct {
 		Accounts []AccountInfo `json:"accounts"`
 	}
+
 	if err := json.Unmarshal(rr.Body.Bytes(), &parsed); err != nil {
 		t.Fatalf("json parse: %v", err)
 	}
+
 	if len(parsed.Accounts) != 2 || !parsed.Accounts[0].IsDefault || parsed.Accounts[1].IsDefault {
 		t.Fatalf("unexpected defaults: %#v", parsed.Accounts)
 	}
@@ -155,9 +171,11 @@ func TestManageServer_HandleListAccounts_DefaultExplicit(t *testing.T) {
 	var parsed struct {
 		Accounts []AccountInfo `json:"accounts"`
 	}
+
 	if err := json.Unmarshal(rr.Body.Bytes(), &parsed); err != nil {
 		t.Fatalf("json parse: %v", err)
 	}
+
 	if len(parsed.Accounts) != 2 || parsed.Accounts[0].IsDefault || !parsed.Accounts[1].IsDefault {
 		t.Fatalf("unexpected defaults: %#v", parsed.Accounts)
 	}
@@ -173,6 +191,7 @@ func TestManageServer_HandleOAuthCallback_ErrorAndValidation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("listen: %v", err)
 	}
+
 	t.Cleanup(func() { _ = ln.Close() })
 	ms.listener = ln
 
@@ -180,6 +199,7 @@ func TestManageServer_HandleOAuthCallback_ErrorAndValidation(t *testing.T) {
 		rr := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/oauth2/callback?error=access_denied", nil)
 		ms.handleOAuthCallback(rr, req)
+
 		if rr.Code != http.StatusOK {
 			t.Fatalf("status: %d", rr.Code)
 		}
@@ -189,6 +209,7 @@ func TestManageServer_HandleOAuthCallback_ErrorAndValidation(t *testing.T) {
 		rr := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/oauth2/callback?state=nope&code=abc", nil)
 		ms.handleOAuthCallback(rr, req)
+
 		if rr.Code != http.StatusBadRequest {
 			t.Fatalf("status: %d", rr.Code)
 		}
@@ -198,6 +219,7 @@ func TestManageServer_HandleOAuthCallback_ErrorAndValidation(t *testing.T) {
 		rr := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/oauth2/callback?state=state1", nil)
 		ms.handleOAuthCallback(rr, req)
+
 		if rr.Code != http.StatusBadRequest {
 			t.Fatalf("status: %d", rr.Code)
 		}
@@ -218,6 +240,7 @@ func TestManageServer_HandleSetDefault_AndRemove(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/set-default", bytes.NewReader([]byte(`{"email":"a@b.com"}`)))
 		req.Header.Set("X-CSRF-Token", "nope")
 		ms.handleSetDefault(rr, req)
+
 		if rr.Code != http.StatusForbidden {
 			t.Fatalf("status: %d", rr.Code)
 		}
@@ -228,9 +251,11 @@ func TestManageServer_HandleSetDefault_AndRemove(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/set-default", bytes.NewReader([]byte(`{"email":"a@b.com"}`)))
 		req.Header.Set("X-CSRF-Token", "csrf")
 		ms.handleSetDefault(rr, req)
+
 		if rr.Code != http.StatusOK {
 			t.Fatalf("status: %d body=%s", rr.Code, rr.Body.String())
 		}
+
 		if store.setDefaultCalled != "a@b.com" {
 			t.Fatalf("expected setDefaultCalled")
 		}
@@ -240,6 +265,7 @@ func TestManageServer_HandleSetDefault_AndRemove(t *testing.T) {
 		rr := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/set-default", nil)
 		ms.handleSetDefault(rr, req)
+
 		if rr.Code != http.StatusMethodNotAllowed {
 			t.Fatalf("status: %d", rr.Code)
 		}
@@ -250,18 +276,21 @@ func TestManageServer_HandleSetDefault_AndRemove(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/set-default", bytes.NewReader([]byte(`{`)))
 		req.Header.Set("X-CSRF-Token", "csrf")
 		ms.handleSetDefault(rr, req)
+
 		if rr.Code != http.StatusBadRequest {
 			t.Fatalf("status: %d", rr.Code)
 		}
 	})
 
 	t.Run("set-default store error", func(t *testing.T) {
-		store.setDefaultErr = errors.New("boom")
+		store.setDefaultErr = errBoom
+
 		t.Cleanup(func() { store.setDefaultErr = nil })
 		rr := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/set-default", bytes.NewReader([]byte(`{"email":"a@b.com"}`)))
 		req.Header.Set("X-CSRF-Token", "csrf")
 		ms.handleSetDefault(rr, req)
+
 		if rr.Code != http.StatusInternalServerError {
 			t.Fatalf("status: %d", rr.Code)
 		}
@@ -272,9 +301,11 @@ func TestManageServer_HandleSetDefault_AndRemove(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/remove-account", bytes.NewReader([]byte(`{"email":"a@b.com"}`)))
 		req.Header.Set("X-CSRF-Token", "csrf")
 		ms.handleRemoveAccount(rr, req)
+
 		if rr.Code != http.StatusOK {
 			t.Fatalf("status: %d", rr.Code)
 		}
+
 		if store.deleteCalled != "a@b.com" {
 			t.Fatalf("expected deleteCalled")
 		}
@@ -284,6 +315,7 @@ func TestManageServer_HandleSetDefault_AndRemove(t *testing.T) {
 		rr := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/remove-account", nil)
 		ms.handleRemoveAccount(rr, req)
+
 		if rr.Code != http.StatusMethodNotAllowed {
 			t.Fatalf("status: %d", rr.Code)
 		}
@@ -294,18 +326,21 @@ func TestManageServer_HandleSetDefault_AndRemove(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/remove-account", bytes.NewReader([]byte(`{`)))
 		req.Header.Set("X-CSRF-Token", "csrf")
 		ms.handleRemoveAccount(rr, req)
+
 		if rr.Code != http.StatusBadRequest {
 			t.Fatalf("status: %d", rr.Code)
 		}
 	})
 
 	t.Run("remove store error", func(t *testing.T) {
-		store.deleteErr = errors.New("boom")
+		store.deleteErr = errBoom
+
 		t.Cleanup(func() { store.deleteErr = nil })
 		rr := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/remove-account", bytes.NewReader([]byte(`{"email":"a@b.com"}`)))
 		req.Header.Set("X-CSRF-Token", "csrf")
 		ms.handleRemoveAccount(rr, req)
+
 		if rr.Code != http.StatusInternalServerError {
 			t.Fatalf("status: %d", rr.Code)
 		}
@@ -313,11 +348,12 @@ func TestManageServer_HandleSetDefault_AndRemove(t *testing.T) {
 }
 
 func TestManageServer_HandleListAccounts_Error(t *testing.T) {
-	store := &fakeStore{listErr: errors.New("boom")}
+	store := &fakeStore{listErr: errBoom}
 	ms := &ManageServer{csrfToken: "csrf", store: store}
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/accounts", nil)
 	ms.handleListAccounts(rr, req)
+
 	if rr.Code != http.StatusInternalServerError {
 		t.Fatalf("status: %d", rr.Code)
 	}
@@ -328,9 +364,11 @@ func TestGenerateCSRFToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("generateCSRFToken: %v", err)
 	}
+
 	if len(token) != 64 {
 		t.Fatalf("unexpected token length: %d", len(token))
 	}
+
 	if _, err := hex.DecodeString(token); err != nil {
 		t.Fatalf("token not hex: %v", err)
 	}
@@ -339,15 +377,17 @@ func TestGenerateCSRFToken(t *testing.T) {
 func TestRenderSuccessPageWithDetails(t *testing.T) {
 	rr := httptest.NewRecorder()
 	renderSuccessPageWithDetails(rr, "me@example.com", []string{"gmail", "drive"})
-	body := rr.Body.String()
-	if !strings.Contains(body, "me@example.com") {
+
+	if body := rr.Body.String(); !strings.Contains(body, "me@example.com") {
 		t.Fatalf("expected email in body")
-	}
-	if !strings.Contains(body, "gmail") || !strings.Contains(body, "drive") {
-		t.Fatalf("expected services in body")
-	}
-	if !strings.Contains(body, strconv.Itoa(postSuccessDisplaySeconds)) {
-		t.Fatalf("expected countdown in body")
+	} else {
+		if !strings.Contains(body, "gmail") || !strings.Contains(body, "drive") {
+			t.Fatalf("expected services in body")
+		}
+
+		if !strings.Contains(body, strconv.Itoa(postSuccessDisplaySeconds)) {
+			t.Fatalf("expected countdown in body")
+		}
 	}
 }
 
@@ -355,6 +395,7 @@ func TestManageServer_HandleAuthStart(t *testing.T) {
 	origRead := readClientCredentials
 	origState := randomStateFn
 	origEndpoint := oauthEndpoint
+
 	t.Cleanup(func() {
 		readClientCredentials = origRead
 		randomStateFn = origState
@@ -371,6 +412,7 @@ func TestManageServer_HandleAuthStart(t *testing.T) {
 	if err != nil {
 		t.Fatalf("listen: %v", err)
 	}
+
 	t.Cleanup(func() { _ = ln.Close() })
 
 	ms := &ManageServer{listener: ln}
@@ -382,31 +424,38 @@ func TestManageServer_HandleAuthStart(t *testing.T) {
 		t.Fatalf("status: %d", rr.Code)
 	}
 	loc := rr.Header().Get("Location")
-	parsed, err := url.Parse(loc)
-	if err != nil {
+	var parsed *url.URL
+
+	if p, err := url.Parse(loc); err != nil {
 		t.Fatalf("parse location: %v", err)
+	} else {
+		parsed = p
 	}
+
 	if parsed.Host != "example.com" {
 		t.Fatalf("unexpected host: %q", parsed.Host)
 	}
-	q := parsed.Query()
-	if q.Get("state") != "state123" {
-		t.Fatalf("unexpected state: %q", q.Get("state"))
+
+	if state := parsed.Query().Get("state"); state != "state123" {
+		t.Fatalf("unexpected state: %q", state)
 	}
+
 	if ms.oauthState != "state123" {
 		t.Fatalf("expected oauthState set")
 	}
-	if !strings.Contains(q.Get("redirect_uri"), "127.0.0.1:") {
-		t.Fatalf("expected redirect uri, got %q", q.Get("redirect_uri"))
+
+	if redirectURI := parsed.Query().Get("redirect_uri"); !strings.Contains(redirectURI, "127.0.0.1:") {
+		t.Fatalf("expected redirect uri, got %q", redirectURI)
 	}
 }
 
 func TestManageServer_HandleAuthStart_CredentialsError(t *testing.T) {
 	origRead := readClientCredentials
+
 	t.Cleanup(func() { readClientCredentials = origRead })
 
 	readClientCredentials = func() (config.ClientCredentials, error) {
-		return config.ClientCredentials{}, errors.New("boom")
+		return config.ClientCredentials{}, errBoom
 	}
 
 	rr := httptest.NewRecorder()
@@ -422,6 +471,7 @@ func TestManageServer_HandleAuthStart_CredentialsError(t *testing.T) {
 func TestManageServer_HandleOAuthCallback_Success(t *testing.T) {
 	origRead := readClientCredentials
 	origEndpoint := oauthEndpoint
+
 	t.Cleanup(func() {
 		readClientCredentials = origRead
 		oauthEndpoint = origEndpoint
@@ -435,12 +485,15 @@ func TestManageServer_HandleOAuthCallback_Success(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Fatalf("expected POST, got %s", r.Method)
 		}
+
 		if err := r.ParseForm(); err != nil {
 			t.Fatalf("parse form: %v", err)
 		}
+
 		if r.Form.Get("code") != "abc" {
 			t.Fatalf("expected code=abc, got %q", r.Form.Get("code"))
 		}
+
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"access_token":  "token",
@@ -457,6 +510,7 @@ func TestManageServer_HandleOAuthCallback_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("listen: %v", err)
 	}
+
 	t.Cleanup(func() { _ = ln.Close() })
 
 	store := &fakeStore{}
@@ -474,12 +528,15 @@ func TestManageServer_HandleOAuthCallback_Success(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status: %d", rr.Code)
 	}
+
 	if store.setTokenEmail != "me@example.com" {
 		t.Fatalf("expected token stored for me@example.com")
 	}
+
 	if store.setTokenValue.RefreshToken != "refresh" {
 		t.Fatalf("expected refresh token stored")
 	}
+
 	if !strings.Contains(rr.Body.String(), "me@example.com") {
 		t.Fatalf("expected body to include email")
 	}
@@ -488,6 +545,7 @@ func TestManageServer_HandleOAuthCallback_Success(t *testing.T) {
 func TestStartManageServer_Timeout(t *testing.T) {
 	origStore := openDefaultStore
 	origOpen := openBrowserFn
+
 	t.Cleanup(func() {
 		openDefaultStore = origStore
 		openBrowserFn = origOpen
@@ -501,10 +559,10 @@ func TestStartManageServer_Timeout(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	err := StartManageServer(ctx, ManageServerOptions{Timeout: 50 * time.Millisecond})
-	if err != nil {
+	if err := StartManageServer(ctx, ManageServerOptions{Timeout: 50 * time.Millisecond}); err != nil {
 		t.Fatalf("StartManageServer: %v", err)
 	}
+
 	if !strings.Contains(opened, "http://127.0.0.1:") {
 		t.Fatalf("expected browser URL, got %q", opened)
 	}

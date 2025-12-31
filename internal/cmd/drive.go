@@ -10,14 +10,36 @@ import (
 	"path/filepath"
 	"strings"
 
+	"google.golang.org/api/drive/v3"
+	gapi "google.golang.org/api/googleapi"
+
 	"github.com/steipete/gogcli/internal/googleapi"
 	"github.com/steipete/gogcli/internal/outfmt"
 	"github.com/steipete/gogcli/internal/ui"
-	"google.golang.org/api/drive/v3"
-	gapi "google.golang.org/api/googleapi"
 )
 
 var newDriveService = googleapi.NewDrive
+
+const (
+	driveMimeGoogleDoc     = "application/vnd.google-apps.document"
+	driveMimeGoogleSheet   = "application/vnd.google-apps.spreadsheet"
+	driveMimeGoogleSlides  = "application/vnd.google-apps.presentation"
+	driveMimeGoogleDrawing = "application/vnd.google-apps.drawing"
+	mimePDF                = "application/pdf"
+	mimeCSV                = "text/csv"
+	mimeDocx               = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+	mimeXlsx               = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+	mimePptx               = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+	mimePNG                = "image/png"
+	mimeTextPlain          = "text/plain"
+	extPDF                 = ".pdf"
+	extCSV                 = ".csv"
+	extXlsx                = ".xlsx"
+	extDocx                = ".docx"
+	extPptx                = ".pptx"
+	extPNG                 = ".png"
+	extTXT                 = ".txt"
+)
 
 type DriveCmd struct {
 	Ls          DriveLsCmd          `cmd:"" name:"ls" help:"List files in a folder (default: root)"`
@@ -829,28 +851,28 @@ func formatDriveSize(bytes int64) string {
 func guessMimeType(path string) string {
 	ext := strings.ToLower(filepath.Ext(path))
 	switch ext {
-	case ".pdf":
-		return "application/pdf"
+	case extPDF:
+		return mimePDF
 	case ".doc":
 		return "application/msword"
-	case ".docx":
-		return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+	case extDocx:
+		return mimeDocx
 	case ".xls":
 		return "application/vnd.ms-excel"
-	case ".xlsx":
-		return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+	case extXlsx:
+		return mimeXlsx
 	case ".ppt":
 		return "application/vnd.ms-powerpoint"
-	case ".pptx":
-		return "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-	case ".png":
-		return "image/png"
+	case extPptx:
+		return mimePptx
+	case extPNG:
+		return mimePNG
 	case ".jpg", ".jpeg":
 		return "image/jpeg"
 	case ".gif":
 		return "image/gif"
-	case ".txt":
-		return "text/plain"
+	case extTXT:
+		return mimeTextPlain
 	case ".html":
 		return "text/html"
 	case ".css":
@@ -934,16 +956,16 @@ func replaceExt(path string, ext string) string {
 
 func driveExportMimeType(googleMimeType string) string {
 	switch googleMimeType {
-	case "application/vnd.google-apps.document":
-		return "application/pdf"
-	case "application/vnd.google-apps.spreadsheet":
-		return "text/csv"
-	case "application/vnd.google-apps.presentation":
-		return "application/pdf"
-	case "application/vnd.google-apps.drawing":
-		return "image/png"
+	case driveMimeGoogleDoc:
+		return mimePDF
+	case driveMimeGoogleSheet:
+		return mimeCSV
+	case driveMimeGoogleSlides:
+		return mimePDF
+	case driveMimeGoogleDrawing:
+		return mimePNG
 	default:
-		return "application/pdf"
+		return mimePDF
 	}
 }
 
@@ -954,49 +976,49 @@ func driveExportMimeTypeForFormat(googleMimeType string, format string) (string,
 	}
 
 	switch googleMimeType {
-	case "application/vnd.google-apps.document":
+	case driveMimeGoogleDoc:
 		switch format {
-		case "pdf":
-			return "application/pdf", nil
+		case defaultExportFormat:
+			return mimePDF, nil
 		case "docx":
-			return "application/vnd.openxmlformats-officedocument.wordprocessingml.document", nil
+			return mimeDocx, nil
 		case "txt":
-			return "text/plain", nil
+			return mimeTextPlain, nil
 		default:
 			return "", fmt.Errorf("invalid --format %q for Google Doc (use pdf|docx|txt)", format)
 		}
-	case "application/vnd.google-apps.spreadsheet":
+	case driveMimeGoogleSheet:
 		switch format {
-		case "pdf":
-			return "application/pdf", nil
+		case defaultExportFormat:
+			return mimePDF, nil
 		case "csv":
-			return "text/csv", nil
+			return mimeCSV, nil
 		case "xlsx":
-			return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", nil
+			return mimeXlsx, nil
 		default:
 			return "", fmt.Errorf("invalid --format %q for Google Sheet (use pdf|csv|xlsx)", format)
 		}
-	case "application/vnd.google-apps.presentation":
+	case driveMimeGoogleSlides:
 		switch format {
-		case "pdf":
-			return "application/pdf", nil
+		case defaultExportFormat:
+			return mimePDF, nil
 		case "pptx":
-			return "application/vnd.openxmlformats-officedocument.presentationml.presentation", nil
+			return mimePptx, nil
 		default:
 			return "", fmt.Errorf("invalid --format %q for Google Slides (use pdf|pptx)", format)
 		}
-	case "application/vnd.google-apps.drawing":
+	case driveMimeGoogleDrawing:
 		switch format {
 		case "png":
-			return "image/png", nil
-		case "pdf":
-			return "application/pdf", nil
+			return mimePNG, nil
+		case defaultExportFormat:
+			return mimePDF, nil
 		default:
 			return "", fmt.Errorf("invalid --format %q for Google Drawing (use png|pdf)", format)
 		}
 	default:
-		if format == "pdf" {
-			return "application/pdf", nil
+		if format == defaultExportFormat {
+			return mimePDF, nil
 		}
 		return "", fmt.Errorf("invalid --format %q for file type %q (use pdf)", format, googleMimeType)
 	}
@@ -1004,22 +1026,22 @@ func driveExportMimeTypeForFormat(googleMimeType string, format string) (string,
 
 func driveExportExtension(mimeType string) string {
 	switch mimeType {
-	case "application/pdf":
-		return ".pdf"
-	case "text/csv":
-		return ".csv"
-	case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-		return ".xlsx"
-	case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-		return ".docx"
-	case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-		return ".pptx"
-	case "image/png":
-		return ".png"
-	case "text/plain":
-		return ".txt"
+	case mimePDF:
+		return extPDF
+	case mimeCSV:
+		return extCSV
+	case mimeXlsx:
+		return extXlsx
+	case mimeDocx:
+		return extDocx
+	case mimePptx:
+		return extPptx
+	case mimePNG:
+		return extPNG
+	case mimeTextPlain:
+		return extTXT
 	default:
-		return ".pdf"
+		return extPDF
 	}
 }
 

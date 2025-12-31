@@ -5,9 +5,10 @@ import (
 	"errors"
 	"os"
 
+	"google.golang.org/api/gmail/v1"
+
 	"github.com/steipete/gogcli/internal/outfmt"
 	"github.com/steipete/gogcli/internal/ui"
-	"google.golang.org/api/gmail/v1"
 )
 
 type GmailBatchCmd struct {

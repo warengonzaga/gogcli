@@ -6,9 +6,10 @@ import (
 	"os"
 	"strings"
 
+	"google.golang.org/api/people/v1"
+
 	"github.com/steipete/gogcli/internal/outfmt"
 	"github.com/steipete/gogcli/internal/ui"
-	"google.golang.org/api/people/v1"
 )
 
 type ContactsCmd struct {

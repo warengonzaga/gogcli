@@ -7,9 +7,15 @@ import (
 	"strings"
 
 	"github.com/alecthomas/kong"
+	"google.golang.org/api/tasks/v1"
+
 	"github.com/steipete/gogcli/internal/outfmt"
 	"github.com/steipete/gogcli/internal/ui"
-	"google.golang.org/api/tasks/v1"
+)
+
+const (
+	taskStatusNeedsAction = "needsAction"
+	taskStatusCompleted   = "completed"
 )
 
 type TasksListCmd struct {
@@ -89,7 +95,7 @@ func (c *TasksListCmd) Run(ctx context.Context, flags *RootFlags) error {
 	for _, t := range resp.Items {
 		status := strings.TrimSpace(t.Status)
 		if status == "" {
-			status = "needsAction"
+			status = taskStatusNeedsAction
 		}
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", t.Id, t.Title, status, strings.TrimSpace(t.Due), strings.TrimSpace(t.Updated))
 	}
@@ -205,7 +211,7 @@ func (c *TasksUpdateCmd) Run(ctx context.Context, kctx *kong.Context, flags *Roo
 		return usage("no fields to update (set at least one of: --title, --notes, --due, --status)")
 	}
 
-	if flagProvided(kctx, "status") && patch.Status != "" && patch.Status != "needsAction" && patch.Status != "completed" {
+	if flagProvided(kctx, "status") && patch.Status != "" && patch.Status != taskStatusNeedsAction && patch.Status != taskStatusCompleted {
 		return usage("invalid --status (expected needsAction or completed)")
 	}
 
@@ -261,7 +267,7 @@ func (c *TasksDoneCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return err
 	}
 
-	updated, err := svc.Tasks.Patch(tasklistID, taskID, &tasks.Task{Status: "completed"}).Do()
+	updated, err := svc.Tasks.Patch(tasklistID, taskID, &tasks.Task{Status: taskStatusCompleted}).Do()
 	if err != nil {
 		return err
 	}

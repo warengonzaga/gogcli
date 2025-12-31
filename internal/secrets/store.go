@@ -10,8 +10,9 @@ import (
 	"time"
 
 	"github.com/99designs/keyring"
-	"github.com/steipete/gogcli/internal/config"
 	"golang.org/x/term"
+
+	"github.com/steipete/gogcli/internal/config"
 )
 
 type Store interface {
@@ -38,6 +39,12 @@ type Token struct {
 
 const keyringPasswordEnv = "GOG_KEYRING_PASSWORD" //nolint:gosec // env var name, not a credential
 
+var (
+	errMissingEmail        = errors.New("missing email")
+	errMissingRefreshToken = errors.New("missing refresh token")
+	errNoTTY               = errors.New("no TTY available for keyring file backend password prompt")
+)
+
 func fileKeyringPasswordFuncFrom(password string, isTTY bool) keyring.PromptFunc {
 	if password != "" {
 		return keyring.FixedStringPrompt(password)
@@ -48,7 +55,7 @@ func fileKeyringPasswordFuncFrom(password string, isTTY bool) keyring.PromptFunc
 	}
 
 	return func(_ string) (string, error) {
-		return "", fmt.Errorf("no TTY available for keyring file backend password prompt; set %s", keyringPasswordEnv)
+		return "", fmt.Errorf("%w; set %s", errNoTTY, keyringPasswordEnv)
 	}
 }
 
@@ -62,7 +69,7 @@ func OpenDefault() (Store, error) {
 	// which *requires* both a directory and a password prompt function.
 	keyringDir, err := config.EnsureKeyringDir()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ensure keyring dir: %w", err)
 	}
 
 	ring, err := keyring.Open(keyring.Config{
@@ -72,13 +79,19 @@ func OpenDefault() (Store, error) {
 		FilePasswordFunc:         fileKeyringPasswordFunc(),
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("open keyring: %w", err)
 	}
+
 	return &KeyringStore{ring: ring}, nil
 }
 
 func (s *KeyringStore) Keys() ([]string, error) {
-	return s.ring.Keys()
+	keys, err := s.ring.Keys()
+	if err != nil {
+		return nil, fmt.Errorf("list keyring keys: %w", err)
+	}
+
+	return keys, nil
 }
 
 type storedToken struct {
@@ -91,11 +104,13 @@ type storedToken struct {
 func (s *KeyringStore) SetToken(email string, tok Token) error {
 	email = normalize(email)
 	if email == "" {
-		return fmt.Errorf("missing email")
+		return errMissingEmail
 	}
+
 	if tok.RefreshToken == "" {
-		return fmt.Errorf("missing refresh token")
+		return errMissingRefreshToken
 	}
+
 	if tok.CreatedAt.IsZero() {
 		tok.CreatedAt = time.Now().UTC()
 	}
@@ -107,28 +122,38 @@ func (s *KeyringStore) SetToken(email string, tok Token) error {
 		CreatedAt:    tok.CreatedAt,
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("encode token: %w", err)
 	}
 
-	return s.ring.Set(keyring.Item{
+	if err := s.ring.Set(keyring.Item{
 		Key:  tokenKey(email),
 		Data: payload,
-	})
+	}); err != nil {
+		return fmt.Errorf("store token: %w", err)
+	}
+
+	return nil
 }
 
 func (s *KeyringStore) GetToken(email string) (Token, error) {
 	email = normalize(email)
 	if email == "" {
-		return Token{}, fmt.Errorf("missing email")
+		return Token{}, errMissingEmail
 	}
-	it, err := s.ring.Get(tokenKey(email))
-	if err != nil {
-		return Token{}, err
+
+	var it keyring.Item
+
+	if item, err := s.ring.Get(tokenKey(email)); err != nil {
+		return Token{}, fmt.Errorf("read token: %w", err)
+	} else {
+		it = item
 	}
 	var st storedToken
+
 	if err := json.Unmarshal(it.Data, &st); err != nil {
-		return Token{}, err
+		return Token{}, fmt.Errorf("decode token: %w", err)
 	}
+
 	return Token{
 		Email:        email,
 		Services:     st.Services,
@@ -141,28 +166,40 @@ func (s *KeyringStore) GetToken(email string) (Token, error) {
 func (s *KeyringStore) DeleteToken(email string) error {
 	email = normalize(email)
 	if email == "" {
-		return fmt.Errorf("missing email")
+		return errMissingEmail
 	}
-	return s.ring.Remove(tokenKey(email))
+
+	if err := s.ring.Remove(tokenKey(email)); err != nil {
+		return fmt.Errorf("delete token: %w", err)
+	}
+
+	return nil
 }
 
 func (s *KeyringStore) ListTokens() ([]Token, error) {
 	keys, err := s.Keys()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list tokens: %w", err)
 	}
 	out := make([]Token, 0)
+
 	for _, k := range keys {
 		email, ok := ParseTokenKey(k)
 		if !ok {
 			continue
 		}
-		tok, err := s.GetToken(email)
-		if err != nil {
-			return nil, err
+
+		var tok Token
+
+		if t, err := s.GetToken(email); err != nil {
+			return nil, fmt.Errorf("read token for %s: %w", email, err)
+		} else {
+			tok = t
 		}
+
 		out = append(out, tok)
 	}
+
 	return out, nil
 }
 
@@ -172,9 +209,11 @@ func ParseTokenKey(k string) (email string, ok bool) {
 		return "", false
 	}
 	rest := strings.TrimPrefix(k, prefix)
+
 	if strings.TrimSpace(rest) == "" {
 		return "", false
 	}
+
 	return rest, true
 }
 
@@ -194,18 +233,25 @@ func (s *KeyringStore) GetDefaultAccount() (string, error) {
 		if errors.Is(err, keyring.ErrKeyNotFound) {
 			return "", nil
 		}
-		return "", err
+
+		return "", fmt.Errorf("read default account: %w", err)
 	}
+
 	return string(it.Data), nil
 }
 
 func (s *KeyringStore) SetDefaultAccount(email string) error {
 	email = normalize(email)
 	if email == "" {
-		return fmt.Errorf("missing email")
+		return errMissingEmail
 	}
-	return s.ring.Set(keyring.Item{
+
+	if err := s.ring.Set(keyring.Item{
 		Key:  defaultAccountKey,
 		Data: []byte(email),
-	})
+	}); err != nil {
+		return fmt.Errorf("store default account: %w", err)
+	}
+
+	return nil
 }

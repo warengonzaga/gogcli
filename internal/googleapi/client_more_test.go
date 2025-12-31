@@ -6,9 +6,16 @@ import (
 	"testing"
 
 	"github.com/99designs/keyring"
+
 	"github.com/steipete/gogcli/internal/config"
 	"github.com/steipete/gogcli/internal/googleauth"
 	"github.com/steipete/gogcli/internal/secrets"
+)
+
+var (
+	errBoom         = errors.New("boom")
+	errNope         = errors.New("nope")
+	errMissingCreds = errors.New("missing creds")
 )
 
 type stubStore struct {
@@ -28,25 +35,28 @@ func (s *stubStore) GetToken(email string) (secrets.Token, error) {
 	if s.err != nil {
 		return secrets.Token{}, s.err
 	}
+
 	return s.tok, nil
 }
 
 func TestTokenSourceForAccountScopes_StoreErrors(t *testing.T) {
 	origOpen := openSecretsStore
+
 	t.Cleanup(func() { openSecretsStore = origOpen })
 
 	openSecretsStore = func() (secrets.Store, error) {
-		return nil, errors.New("boom")
+		return nil, errBoom
 	}
 
 	_, err := tokenSourceForAccountScopes(context.Background(), "svc", "a@b.com", "id", "secret", []string{"s1"})
-	if err == nil || err.Error() != "boom" {
+	if err == nil || !errors.Is(err, errBoom) {
 		t.Fatalf("expected boom, got: %v", err)
 	}
 }
 
 func TestTokenSourceForAccountScopes_KeyNotFound(t *testing.T) {
 	origOpen := openSecretsStore
+
 	t.Cleanup(func() { openSecretsStore = origOpen })
 
 	openSecretsStore = func() (secrets.Store, error) {
@@ -58,9 +68,11 @@ func TestTokenSourceForAccountScopes_KeyNotFound(t *testing.T) {
 		t.Fatalf("expected error")
 	}
 	var are *AuthRequiredError
+
 	if !errors.As(err, &are) {
 		t.Fatalf("expected AuthRequiredError, got: %T %v", err, err)
 	}
+
 	if are.Service != "gmail" || are.Email != "a@b.com" {
 		t.Fatalf("unexpected: %#v", are)
 	}
@@ -68,20 +80,22 @@ func TestTokenSourceForAccountScopes_KeyNotFound(t *testing.T) {
 
 func TestTokenSourceForAccountScopes_OtherGetError(t *testing.T) {
 	origOpen := openSecretsStore
+
 	t.Cleanup(func() { openSecretsStore = origOpen })
 
 	openSecretsStore = func() (secrets.Store, error) {
-		return &stubStore{err: errors.New("nope")}, nil
+		return &stubStore{err: errNope}, nil
 	}
 
 	_, err := tokenSourceForAccountScopes(context.Background(), "svc", "a@b.com", "id", "secret", []string{"s1"})
-	if err == nil || err.Error() != "nope" {
+	if err == nil || !errors.Is(err, errNope) {
 		t.Fatalf("expected nope, got: %v", err)
 	}
 }
 
 func TestTokenSourceForAccountScopes_HappyPath(t *testing.T) {
 	origOpen := openSecretsStore
+
 	t.Cleanup(func() { openSecretsStore = origOpen })
 
 	s := &stubStore{tok: secrets.Token{Email: "a@b.com", RefreshToken: "rt"}}
@@ -91,6 +105,7 @@ func TestTokenSourceForAccountScopes_HappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
+
 	if ts == nil {
 		t.Fatalf("expected token source")
 	}
@@ -102,14 +117,15 @@ func TestTokenSourceForAccountScopes_HappyPath(t *testing.T) {
 
 func TestTokenSourceForAccount_ReadCredsError(t *testing.T) {
 	origRead := readClientCredentials
+
 	t.Cleanup(func() { readClientCredentials = origRead })
 
 	readClientCredentials = func() (config.ClientCredentials, error) {
-		return config.ClientCredentials{}, errors.New("missing creds")
+		return config.ClientCredentials{}, errMissingCreds
 	}
 
 	_, err := tokenSourceForAccount(context.Background(), googleauth.ServiceGmail, "a@b.com")
-	if err == nil || err.Error() != "missing creds" {
+	if err == nil || !errors.Is(err, errMissingCreds) {
 		t.Fatalf("expected missing creds, got: %v", err)
 	}
 }
@@ -117,6 +133,7 @@ func TestTokenSourceForAccount_ReadCredsError(t *testing.T) {
 func TestOptionsForAccountScopes_HappyPath(t *testing.T) {
 	origRead := readClientCredentials
 	origOpen := openSecretsStore
+
 	t.Cleanup(func() {
 		readClientCredentials = origRead
 		openSecretsStore = origOpen
@@ -133,6 +150,7 @@ func TestOptionsForAccountScopes_HappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
+
 	if len(opts) == 0 {
 		t.Fatalf("expected client options")
 	}
@@ -141,6 +159,7 @@ func TestOptionsForAccountScopes_HappyPath(t *testing.T) {
 func TestOptionsForAccount_HappyPath(t *testing.T) {
 	origRead := readClientCredentials
 	origOpen := openSecretsStore
+
 	t.Cleanup(func() {
 		readClientCredentials = origRead
 		openSecretsStore = origOpen
@@ -157,6 +176,7 @@ func TestOptionsForAccount_HappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
+
 	if len(opts) == 0 {
 		t.Fatalf("expected client options")
 	}

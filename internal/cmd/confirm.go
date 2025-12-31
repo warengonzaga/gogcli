@@ -8,8 +8,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/steipete/gogcli/internal/ui"
 	"golang.org/x/term"
+
+	"github.com/steipete/gogcli/internal/ui"
 )
 
 func confirmDestructive(ctx context.Context, flags *RootFlags, action string) error {

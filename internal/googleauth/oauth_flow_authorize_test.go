@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -12,9 +13,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/steipete/gogcli/internal/config"
 	"golang.org/x/oauth2"
+
+	"github.com/steipete/gogcli/internal/config"
 )
+
+var errMissingRedirectState = errors.New("missing redirect/state")
 
 func newTokenServer(t *testing.T) *httptest.Server {
 	t.Helper()
@@ -24,18 +28,22 @@ func newTokenServer(t *testing.T) *httptest.Server {
 			http.NotFound(w, r)
 			return
 		}
+
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "bad form", http.StatusBadRequest)
 			return
 		}
+
 		if r.Form.Get("grant_type") != "authorization_code" {
 			http.Error(w, "bad grant_type", http.StatusBadRequest)
 			return
 		}
+
 		if r.Form.Get("code") == "" {
 			http.Error(w, "missing code", http.StatusBadRequest)
 			return
 		}
+
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"access_token":  "at",
@@ -57,6 +65,7 @@ func TestAuthorize_Manual_Success(t *testing.T) {
 	origRead := readClientCredentials
 	origEndpoint := oauthEndpoint
 	origState := randomStateFn
+
 	t.Cleanup(func() {
 		readClientCredentials = origRead
 		oauthEndpoint = origEndpoint
@@ -73,10 +82,17 @@ func TestAuthorize_Manual_Success(t *testing.T) {
 	oauthEndpoint = oauth2EndpointForTest(tokenSrv.URL)
 
 	origStdin := os.Stdin
+
 	t.Cleanup(func() { os.Stdin = origStdin })
-	r, w, err := os.Pipe()
-	if err != nil {
+
+	var r *os.File
+	var w *os.File
+
+	if pr, pw, err := os.Pipe(); err != nil {
 		t.Fatalf("pipe: %v", err)
+	} else {
+		r = pr
+		w = pw
 	}
 	os.Stdin = r
 	_, _ = w.WriteString("http://localhost:1/?code=abc&state=state123\n")
@@ -90,6 +106,7 @@ func TestAuthorize_Manual_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Authorize: %v", err)
 	}
+
 	if rt != "rt" {
 		t.Fatalf("unexpected refresh token: %q", rt)
 	}
@@ -99,6 +116,7 @@ func TestAuthorize_Manual_StateMismatch(t *testing.T) {
 	origRead := readClientCredentials
 	origEndpoint := oauthEndpoint
 	origState := randomStateFn
+
 	t.Cleanup(func() {
 		readClientCredentials = origRead
 		oauthEndpoint = origEndpoint
@@ -115,21 +133,27 @@ func TestAuthorize_Manual_StateMismatch(t *testing.T) {
 	oauthEndpoint = oauth2EndpointForTest(tokenSrv.URL)
 
 	origStdin := os.Stdin
+
 	t.Cleanup(func() { os.Stdin = origStdin })
-	r, w, err := os.Pipe()
-	if err != nil {
+
+	var r *os.File
+	var w *os.File
+
+	if pr, pw, err := os.Pipe(); err != nil {
 		t.Fatalf("pipe: %v", err)
+	} else {
+		r = pr
+		w = pw
 	}
 	os.Stdin = r
 	_, _ = w.WriteString("http://localhost:1/?code=abc&state=DIFFERENT\n")
 	_ = w.Close()
 
-	_, err = Authorize(context.Background(), AuthorizeOptions{
+	if _, err := Authorize(context.Background(), AuthorizeOptions{
 		Scopes:  []string{"s1"},
 		Manual:  true,
 		Timeout: 2 * time.Second,
-	})
-	if err == nil || !strings.Contains(err.Error(), "state mismatch") {
+	}); err == nil || !strings.Contains(err.Error(), "state mismatch") {
 		t.Fatalf("expected state mismatch, got: %v", err)
 	}
 }
@@ -138,6 +162,7 @@ func TestAuthorize_ServerFlow_Success(t *testing.T) {
 	origRead := readClientCredentials
 	origEndpoint := oauthEndpoint
 	origOpen := openBrowserFn
+
 	t.Cleanup(func() {
 		readClientCredentials = origRead
 		oauthEndpoint = origEndpoint
@@ -155,20 +180,36 @@ func TestAuthorize_ServerFlow_Success(t *testing.T) {
 	openBrowserFn = func(authURL string) error {
 		u, err := url.Parse(authURL)
 		if err != nil {
-			return err
+			return fmt.Errorf("parse auth url: %w", err)
 		}
 		q := u.Query()
 		redirect := q.Get("redirect_uri")
-		state := q.Get("state")
-		if redirect == "" || state == "" {
-			return errors.New("missing redirect/state")
+
+		var state string
+
+		if s := q.Get("state"); redirect == "" || s == "" {
+			return errMissingRedirectState
+		} else {
+			state = s
 		}
 		cb := redirect + "?code=abc&state=" + url.QueryEscape(state)
-		resp, err := http.Get(cb)
-		if err != nil {
-			return err
+
+		var req *http.Request
+
+		if r, err := http.NewRequestWithContext(context.Background(), http.MethodGet, cb, nil); err != nil {
+			return fmt.Errorf("build callback request: %w", err)
+		} else {
+			req = r
+		}
+		var resp *http.Response
+
+		if r, err := http.DefaultClient.Do(req); err != nil {
+			return fmt.Errorf("send callback request: %w", err)
+		} else {
+			resp = r
 		}
 		_ = resp.Body.Close()
+
 		return nil
 	}
 
@@ -179,6 +220,7 @@ func TestAuthorize_ServerFlow_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Authorize: %v", err)
 	}
+
 	if rt != "rt" {
 		t.Fatalf("unexpected refresh token: %q", rt)
 	}
@@ -200,6 +242,7 @@ func TestAuthorize_ServerFlow_CallbackErrors(t *testing.T) {
 			origRead := readClientCredentials
 			origEndpoint := oauthEndpoint
 			origOpen := openBrowserFn
+
 			t.Cleanup(func() {
 				readClientCredentials = origRead
 				oauthEndpoint = origEndpoint
@@ -217,24 +260,43 @@ func TestAuthorize_ServerFlow_CallbackErrors(t *testing.T) {
 			openBrowserFn = func(authURL string) error {
 				u, err := url.Parse(authURL)
 				if err != nil {
-					return err
+					return fmt.Errorf("parse auth url: %w", err)
 				}
 				q := u.Query()
 				redirect := q.Get("redirect_uri")
-				state := q.Get("state")
-				if redirect == "" || state == "" {
-					return errors.New("missing redirect/state")
+
+				var state string
+
+				if s := q.Get("state"); redirect == "" || s == "" {
+					return errMissingRedirectState
+				} else {
+					state = s
 				}
-				query := tt.query
-				if strings.Contains(query, "%s") {
-					query = fmtSprintf(query, url.QueryEscape(state))
+				var query string
+
+				if q := tt.query; strings.Contains(q, "%s") {
+					query = fmtSprintf(q, url.QueryEscape(state))
+				} else {
+					query = q
 				}
 				cb := redirect + "?" + query
-				resp, err := http.Get(cb)
-				if err != nil {
-					return err
+
+				var req *http.Request
+
+				if r, err := http.NewRequestWithContext(context.Background(), http.MethodGet, cb, nil); err != nil {
+					return fmt.Errorf("build callback request: %w", err)
+				} else {
+					req = r
+				}
+				var resp *http.Response
+
+				if r, err := http.DefaultClient.Do(req); err != nil {
+					return fmt.Errorf("send callback request: %w", err)
+				} else {
+					resp = r
 				}
 				_ = resp.Body.Close()
+
 				return nil
 			}
 

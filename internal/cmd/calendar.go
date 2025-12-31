@@ -8,10 +8,11 @@ import (
 	"time"
 
 	"github.com/alecthomas/kong"
+	"google.golang.org/api/calendar/v3"
+
 	"github.com/steipete/gogcli/internal/googleapi"
 	"github.com/steipete/gogcli/internal/outfmt"
 	"github.com/steipete/gogcli/internal/ui"
-	"google.golang.org/api/calendar/v3"
 )
 
 var newCalendarService = googleapi.NewCalendar

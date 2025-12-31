@@ -29,6 +29,7 @@ func New(opts Options) (*UI, error) {
 	if opts.Stdout == nil {
 		opts.Stdout = os.Stdout
 	}
+
 	if opts.Stderr == nil {
 		opts.Stderr = os.Stderr
 	}
@@ -37,6 +38,7 @@ func New(opts Options) (*UI, error) {
 	if colorMode == "" {
 		colorMode = "auto"
 	}
+
 	if colorMode != "auto" && colorMode != "always" && colorMode != "never" {
 		return nil, &ParseError{msg: "invalid --color (expected auto|always|never)"}
 	}
@@ -57,6 +59,7 @@ func chooseProfile(detected termenv.Profile, mode string) termenv.Profile {
 	if termenv.EnvNoColor() {
 		return termenv.Ascii
 	}
+
 	switch mode {
 	case "never":
 		return termenv.Ascii
@@ -94,6 +97,7 @@ func (p *Printer) Successf(format string, args ...any) {
 	if p.ColorEnabled() {
 		msg = termenv.String(msg).Foreground(p.profile.Color("#22c55e")).String()
 	}
+
 	p.line(msg)
 }
 
@@ -101,6 +105,7 @@ func (p *Printer) Error(msg string) {
 	if p.ColorEnabled() {
 		msg = termenv.String(msg).Foreground(p.profile.Color("#ef4444")).String()
 	}
+
 	p.line(msg)
 }
 
@@ -120,5 +125,6 @@ func FromContext(ctx context.Context) *UI {
 		return nil
 	}
 	u, _ := v.(*UI)
+
 	return u
 }

@@ -30,11 +30,11 @@ tools:
 	@GOBIN=$(TOOLS_DIR) go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
 
 fmt: tools
-	@$(GOIMPORTS) -w .
+	@$(GOIMPORTS) -local github.com/steipete/gogcli -w .
 	@$(GOFUMPT) -w .
 
 fmt-check: tools
-	@$(GOIMPORTS) -w .
+	@$(GOIMPORTS) -local github.com/steipete/gogcli -w .
 	@$(GOFUMPT) -w .
 	@git diff --exit-code -- '*.go' go.mod go.sum
 

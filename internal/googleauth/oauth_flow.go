@@ -47,16 +47,30 @@ var (
 	randomStateFn         = randomState
 )
 
+var (
+	errAuthorization  = errors.New("authorization error")
+	errMissingCode    = errors.New("missing code")
+	errMissingScopes  = errors.New("missing scopes")
+	errNoCodeInURL    = errors.New("no code found in URL")
+	errNoRefreshToken = errors.New("no refresh token received; try again with --force-consent")
+	errStateMismatch  = errors.New("state mismatch")
+)
+
 func Authorize(ctx context.Context, opts AuthorizeOptions) (string, error) {
 	if opts.Timeout <= 0 {
 		opts.Timeout = 2 * time.Minute
 	}
+
 	if len(opts.Scopes) == 0 {
-		return "", errors.New("missing scopes")
+		return "", errMissingScopes
 	}
-	creds, err := readClientCredentials()
-	if err != nil {
+
+	var creds config.ClientCredentials
+
+	if c, err := readClientCredentials(); err != nil {
 		return "", err
+	} else {
+		creds = c
 	}
 
 	state, err := randomStateFn()
@@ -77,6 +91,7 @@ func Authorize(ctx context.Context, opts AuthorizeOptions) (string, error) {
 			Scopes:       opts.Scopes,
 		}
 		authURL := cfg.AuthCodeURL(state, authURLParams(opts.ForceConsent)...)
+
 		fmt.Fprintln(os.Stderr, "Visit this URL to authorize:")
 		fmt.Fprintln(os.Stderr, authURL)
 		fmt.Fprintln(os.Stderr)
@@ -86,31 +101,41 @@ func Authorize(ctx context.Context, opts AuthorizeOptions) (string, error) {
 
 		fmt.Fprint(os.Stderr, "Paste redirect URL: ")
 		line, readErr := bufio.NewReader(os.Stdin).ReadString('\n')
+
 		if readErr != nil && !errors.Is(readErr, os.ErrClosed) {
-			return "", readErr
+			return "", fmt.Errorf("read redirect url: %w", readErr)
 		}
 		line = strings.TrimSpace(line)
 		code, gotState, parseErr := extractCodeAndState(line)
+
 		if parseErr != nil {
 			return "", parseErr
 		}
+
 		if gotState != "" && gotState != state {
-			return "", errors.New("state mismatch")
+			return "", errStateMismatch
 		}
-		tok, exchangeErr := cfg.Exchange(ctx, code)
-		if exchangeErr != nil {
-			return "", exchangeErr
+
+		var tok *oauth2.Token
+
+		if t, exchangeErr := cfg.Exchange(ctx, code); exchangeErr != nil {
+			return "", fmt.Errorf("exchange code: %w", exchangeErr)
+		} else {
+			tok = t
 		}
+
 		if tok.RefreshToken == "" {
-			return "", errors.New("no refresh token received; try again with --force-consent")
+			return "", errNoRefreshToken
 		}
+
 		return tok.RefreshToken, nil
 	}
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("listen for callback: %w", err)
 	}
+
 	defer func() { _ = ln.Close() }()
 
 	port := ln.Addr().(*net.TCPAddr).Port
@@ -139,7 +164,7 @@ func Authorize(ctx context.Context, opts AuthorizeOptions) (string, error) {
 
 			if q.Get("error") != "" {
 				select {
-				case errCh <- fmt.Errorf("authorization error: %s", q.Get("error")):
+				case errCh <- fmt.Errorf("%w: %s", errAuthorization, q.Get("error")):
 				default:
 				}
 				w.WriteHeader(http.StatusOK)
@@ -148,7 +173,7 @@ func Authorize(ctx context.Context, opts AuthorizeOptions) (string, error) {
 			}
 			if q.Get("state") != state {
 				select {
-				case errCh <- errors.New("state mismatch"):
+				case errCh <- errStateMismatch:
 				default:
 				}
 				w.WriteHeader(http.StatusBadRequest)
@@ -158,7 +183,7 @@ func Authorize(ctx context.Context, opts AuthorizeOptions) (string, error) {
 			code := q.Get("code")
 			if code == "" {
 				select {
-				case errCh <- errors.New("missing code"):
+				case errCh <- errMissingCode:
 				default:
 				}
 				w.WriteHeader(http.StatusBadRequest)
@@ -189,6 +214,7 @@ func Authorize(ctx context.Context, opts AuthorizeOptions) (string, error) {
 	}()
 
 	authURL := cfg.AuthCodeURL(state, authURLParams(opts.ForceConsent)...)
+
 	fmt.Fprintln(os.Stderr, "Opening browser for authorization…")
 	fmt.Fprintln(os.Stderr, "If the browser doesn't open, visit this URL:")
 	fmt.Fprintln(os.Stderr, authURL)
@@ -196,25 +222,30 @@ func Authorize(ctx context.Context, opts AuthorizeOptions) (string, error) {
 
 	select {
 	case code := <-codeCh:
-		tok, exchangeErr := cfg.Exchange(ctx, code)
-		if exchangeErr != nil {
+		var tok *oauth2.Token
+
+		if t, exchangeErr := cfg.Exchange(ctx, code); exchangeErr != nil {
 			_ = srv.Close()
-			return "", exchangeErr
+			return "", fmt.Errorf("exchange code: %w", exchangeErr)
+		} else {
+			tok = t
 		}
+
 		if tok.RefreshToken == "" {
 			_ = srv.Close()
-			return "", errors.New("no refresh token received; try again with --force-consent")
+			return "", errNoRefreshToken
 		}
 		// Keep server running so CLI waits for the user to finish auth flow (Ctrl+C ok).
 		waitPostSuccess(ctx, postSuccessDisplaySeconds*time.Second)
 		_ = srv.Close()
+
 		return tok.RefreshToken, nil
 	case err := <-errCh:
 		_ = srv.Close()
 		return "", err
 	case <-ctx.Done():
 		_ = srv.Close()
-		return "", ctx.Err()
+		return "", fmt.Errorf("authorization canceled: %w", ctx.Err())
 	}
 }
 
@@ -226,28 +257,30 @@ func authURLParams(forceConsent bool) []oauth2.AuthCodeOption {
 	if forceConsent {
 		opts = append(opts, oauth2.SetAuthURLParam("prompt", "consent"))
 	}
+
 	return opts
 }
 
 func randomState() (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
-		return "", err
+		return "", fmt.Errorf("generate state: %w", err)
 	}
+
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
 func extractCodeAndState(rawURL string) (code string, state string, err error) {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("parse redirect url: %w", err)
 	}
-	q := parsed.Query()
-	code = q.Get("code")
-	if code == "" {
-		return "", "", errors.New("no code found in URL")
+
+	if code := parsed.Query().Get("code"); code == "" {
+		return "", "", errNoCodeInURL
+	} else {
+		return code, parsed.Query().Get("state"), nil
 	}
-	return code, q.Get("state"), nil
 }
 
 // renderSuccessPage renders the success HTML template

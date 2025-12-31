@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/alecthomas/kong"
+
 	"github.com/steipete/gogcli/internal/errfmt"
 	"github.com/steipete/gogcli/internal/outfmt"
 	"github.com/steipete/gogcli/internal/ui"

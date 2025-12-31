@@ -17,6 +17,8 @@ type infoViaDriveOptions struct {
 	KindLabel    string
 }
 
+const infoViaDriveDefaultKindLabel = "expected type"
+
 func infoViaDrive(ctx context.Context, flags *RootFlags, opts infoViaDriveOptions, id string) error {
 	u := ui.FromContext(ctx)
 	account, err := requireAccount(flags)
@@ -52,7 +54,7 @@ func infoViaDrive(ctx context.Context, flags *RootFlags, opts infoViaDriveOption
 	if opts.ExpectedMime != "" && f.MimeType != opts.ExpectedMime {
 		label := strings.TrimSpace(opts.KindLabel)
 		if label == "" {
-			label = "expected type"
+			label = infoViaDriveDefaultKindLabel
 		}
 		return fmt.Errorf("file is not a %s (mimeType=%q)", label, f.MimeType)
 	}

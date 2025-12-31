@@ -11,10 +11,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/steipete/gogcli/internal/outfmt"
-	"github.com/steipete/gogcli/internal/ui"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
+
+	"github.com/steipete/gogcli/internal/outfmt"
+	"github.com/steipete/gogcli/internal/ui"
 )
 
 func TestDriveGetDownloadUploadURL_JSON(t *testing.T) {

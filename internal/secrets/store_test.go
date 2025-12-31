@@ -18,9 +18,11 @@ func TestParseTokenKey(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected ok")
 	}
+
 	if email != "a@b.com" {
 		t.Fatalf("unexpected: %q", email)
 	}
+
 	if _, ok := ParseTokenKey("nope"); ok {
 		t.Fatalf("expected not ok")
 	}
@@ -44,12 +46,15 @@ func TestKeyringStore_TokenRoundtrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetToken: %v", err)
 	}
+
 	if got.Email != "a@b.com" {
 		t.Fatalf("email: %q", got.Email)
 	}
+
 	if got.RefreshToken != "rt" {
 		t.Fatalf("refresh token mismatch")
 	}
+
 	if got.CreatedAt.IsZero() {
 		t.Fatalf("expected createdAt")
 	}
@@ -58,6 +63,7 @@ func TestKeyringStore_TokenRoundtrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListTokens: %v", err)
 	}
+
 	if len(list) != 1 || list[0].Email != "a@b.com" {
 		t.Fatalf("unexpected list: %#v", list)
 	}
@@ -65,6 +71,7 @@ func TestKeyringStore_TokenRoundtrip(t *testing.T) {
 	if err := s.DeleteToken("a@b.com"); err != nil {
 		t.Fatalf("DeleteToken: %v", err)
 	}
+
 	if _, err := s.GetToken("a@b.com"); err == nil {
 		t.Fatalf("expected error after delete")
 	}
@@ -81,10 +88,12 @@ func TestKeyringStore_DefaultAccount_Roundtrip(t *testing.T) {
 	if err := s.SetDefaultAccount("A@B.COM"); err != nil {
 		t.Fatalf("SetDefaultAccount: %v", err)
 	}
+
 	got, err := s.GetDefaultAccount()
 	if err != nil {
 		t.Fatalf("GetDefaultAccount: %v", err)
 	}
+
 	if got != "a@b.com" {
 		t.Fatalf("unexpected default: %q", got)
 	}

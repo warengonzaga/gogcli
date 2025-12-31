@@ -9,9 +9,10 @@ import (
 	"text/tabwriter"
 
 	"github.com/alecthomas/kong"
+	"google.golang.org/api/gmail/v1"
+
 	"github.com/steipete/gogcli/internal/outfmt"
 	"github.com/steipete/gogcli/internal/ui"
-	"google.golang.org/api/gmail/v1"
 )
 
 type GmailSendAsCmd struct {
@@ -24,6 +25,8 @@ type GmailSendAsCmd struct {
 }
 
 type GmailSendAsListCmd struct{}
+
+const sendAsYes = "yes"
 
 func (c *GmailSendAsListCmd) Run(ctx context.Context, flags *RootFlags) error {
 	u := ui.FromContext(ctx)
@@ -56,15 +59,15 @@ func (c *GmailSendAsListCmd) Run(ctx context.Context, flags *RootFlags) error {
 	for _, sa := range resp.SendAs {
 		isDefault := ""
 		if sa.IsDefault {
-			isDefault = "yes"
+			isDefault = sendAsYes
 		}
 		verified := "pending"
-		if sa.VerificationStatus == "accepted" {
-			verified = "yes"
+		if sa.VerificationStatus == gmailVerificationAccepted {
+			verified = sendAsYes
 		}
 		treatAsAlias := ""
 		if sa.TreatAsAlias {
-			treatAsAlias = "yes"
+			treatAsAlias = sendAsYes
 		}
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
 			sa.SendAsEmail, sa.DisplayName, isDefault, verified, treatAsAlias)

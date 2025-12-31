@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/99designs/keyring"
+
 	"github.com/steipete/gogcli/internal/config"
 	"github.com/steipete/gogcli/internal/secrets"
 )
@@ -13,6 +14,7 @@ import (
 func TestNewServices_HappyPath(t *testing.T) {
 	origRead := readClientCredentials
 	origOpen := openSecretsStore
+
 	t.Cleanup(func() {
 		readClientCredentials = origRead
 		openSecretsStore = origOpen
@@ -29,21 +31,27 @@ func TestNewServices_HappyPath(t *testing.T) {
 	if svc, err := NewGmail(ctx, "a@b.com"); err != nil || svc == nil {
 		t.Fatalf("NewGmail: %v", err)
 	}
+
 	if svc, err := NewDrive(ctx, "a@b.com"); err != nil || svc == nil {
 		t.Fatalf("NewDrive: %v", err)
 	}
+
 	if svc, err := NewCalendar(ctx, "a@b.com"); err != nil || svc == nil {
 		t.Fatalf("NewCalendar: %v", err)
 	}
+
 	if svc, err := NewSheets(ctx, "a@b.com"); err != nil || svc == nil {
 		t.Fatalf("NewSheets: %v", err)
 	}
+
 	if svc, err := NewPeopleContacts(ctx, "a@b.com"); err != nil || svc == nil {
 		t.Fatalf("NewPeopleContacts: %v", err)
 	}
+
 	if svc, err := NewPeopleOtherContacts(ctx, "a@b.com"); err != nil || svc == nil {
 		t.Fatalf("NewPeopleOtherContacts: %v", err)
 	}
+
 	if svc, err := NewPeopleDirectory(ctx, "a@b.com"); err != nil || svc == nil {
 		t.Fatalf("NewPeopleDirectory: %v", err)
 	}
@@ -52,6 +60,7 @@ func TestNewServices_HappyPath(t *testing.T) {
 func TestNewServices_AuthRequired(t *testing.T) {
 	origRead := readClientCredentials
 	origOpen := openSecretsStore
+
 	t.Cleanup(func() {
 		readClientCredentials = origRead
 		openSecretsStore = origOpen
@@ -69,6 +78,7 @@ func TestNewServices_AuthRequired(t *testing.T) {
 		t.Fatalf("expected error")
 	}
 	var are *AuthRequiredError
+
 	if !errors.As(err, &are) {
 		t.Fatalf("expected AuthRequiredError, got: %T %v", err, err)
 	}

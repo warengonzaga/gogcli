@@ -9,9 +9,10 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"google.golang.org/api/calendar/v3"
+
 	"github.com/steipete/gogcli/internal/outfmt"
 	"github.com/steipete/gogcli/internal/ui"
-	"google.golang.org/api/calendar/v3"
 )
 
 type conflict struct {

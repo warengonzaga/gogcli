@@ -12,6 +12,8 @@ import (
 	gogapi "github.com/steipete/gogcli/internal/googleapi"
 )
 
+var errNope = errors.New("nope")
+
 func TestFormat_Nil(t *testing.T) {
 	if got := Format(nil); got != "" {
 		t.Fatalf("unexpected: %q", got)
@@ -21,17 +23,20 @@ func TestFormat_Nil(t *testing.T) {
 func TestFormat_AuthRequired(t *testing.T) {
 	err := &gogapi.AuthRequiredError{Service: "gmail", Email: "a@b.com", Cause: keyring.ErrKeyNotFound}
 	got := Format(err)
+
 	if got == "" {
 		t.Fatalf("expected message")
 	}
+
 	if !containsAll(got, "gog auth add", "a@b.com", "gmail") {
 		t.Fatalf("unexpected: %q", got)
 	}
 }
 
 func TestFormat_CredentialsMissing(t *testing.T) {
-	err := &config.CredentialsMissingError{Path: "/tmp/creds.json", Cause: errors.New("nope")}
+	err := &config.CredentialsMissingError{Path: "/tmp/creds.json", Cause: errNope}
 	got := Format(err)
+
 	if !containsAll(got, "gog auth credentials", "/tmp/creds.json") {
 		t.Fatalf("unexpected: %q", got)
 	}
@@ -53,6 +58,7 @@ func TestFormat_GoogleAPIError(t *testing.T) {
 		},
 	}
 	got := Format(err)
+
 	if !containsAll(got, "403", "insufficientPermissions", "nope") {
 		t.Fatalf("unexpected: %q", got)
 	}
@@ -64,5 +70,6 @@ func containsAll(s string, subs ...string) bool {
 			return false
 		}
 	}
+
 	return true
 }

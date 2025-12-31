@@ -9,10 +9,11 @@ import (
 	"sync"
 	"time"
 
+	"google.golang.org/api/gmail/v1"
+
 	"github.com/steipete/gogcli/internal/googleapi"
 	"github.com/steipete/gogcli/internal/outfmt"
 	"github.com/steipete/gogcli/internal/ui"
-	"google.golang.org/api/gmail/v1"
 )
 
 var newGmailService = googleapi.NewGmail

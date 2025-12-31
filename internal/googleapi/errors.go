@@ -30,6 +30,7 @@ func (e *RateLimitError) Error() string {
 	if e.RetryAfter > 0 {
 		return fmt.Sprintf("rate limit exceeded, retry after %s (attempted %d retries)", e.RetryAfter, e.Retries)
 	}
+
 	return fmt.Sprintf("rate limit exceeded after %d retries", e.Retries)
 }
 
@@ -49,6 +50,7 @@ func (e *QuotaExceededError) Error() string {
 	if e.Resource != "" {
 		return fmt.Sprintf("API quota exceeded for %s", e.Resource)
 	}
+
 	return "API quota exceeded"
 }
 
@@ -62,6 +64,7 @@ func (e *NotFoundError) Error() string {
 	if e.ID != "" {
 		return fmt.Sprintf("%s not found: %s", e.Resource, e.ID)
 	}
+
 	return fmt.Sprintf("%s not found", e.Resource)
 }
 
@@ -75,6 +78,7 @@ func (e *PermissionDeniedError) Error() string {
 	if e.Action != "" {
 		return fmt.Sprintf("permission denied: cannot %s %s", e.Action, e.Resource)
 	}
+
 	return fmt.Sprintf("permission denied for %s", e.Resource)
 }
 

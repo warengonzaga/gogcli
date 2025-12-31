@@ -3,6 +3,7 @@ package outfmt
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -21,6 +22,7 @@ func FromFlags(jsonOut bool, plainOut bool) (Mode, error) {
 	if jsonOut && plainOut {
 		return Mode{}, &ParseError{msg: "invalid output mode (cannot combine --json and --plain)"}
 	}
+
 	return Mode{JSON: jsonOut, Plain: plainOut}, nil
 }
 
@@ -43,6 +45,7 @@ func FromContext(ctx context.Context) Mode {
 			return m
 		}
 	}
+
 	return Mode{}
 }
 
@@ -53,7 +56,12 @@ func WriteJSON(w io.Writer, v any) error {
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
-	return enc.Encode(v)
+
+	if err := enc.Encode(v); err != nil {
+		return fmt.Errorf("encode json: %w", err)
+	}
+
+	return nil
 }
 
 func envBool(key string) bool {

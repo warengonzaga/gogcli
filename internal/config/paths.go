@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -10,8 +11,9 @@ const AppName = "gogcli"
 func Dir() (string, error) {
 	base, err := os.UserConfigDir()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("resolve user config dir: %w", err)
 	}
+
 	return filepath.Join(base, AppName), nil
 }
 
@@ -20,9 +22,11 @@ func EnsureDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return "", err
+		return "", fmt.Errorf("ensure config dir: %w", err)
 	}
+
 	return dir, nil
 }
 
@@ -35,6 +39,7 @@ func KeyringDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return filepath.Join(dir, "keyring"), nil
 }
 
@@ -44,9 +49,11 @@ func EnsureKeyringDir() (string, error) {
 		return "", err
 	}
 	// keyring's file backend uses 0700 by default; match that.
+
 	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return "", err
+		return "", fmt.Errorf("ensure keyring dir: %w", err)
 	}
+
 	return dir, nil
 }
 
@@ -55,6 +62,7 @@ func ClientCredentialsPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return filepath.Join(dir, "credentials.json"), nil
 }
 
@@ -63,6 +71,7 @@ func DriveDownloadsDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return filepath.Join(dir, "drive-downloads"), nil
 }
 
@@ -71,9 +80,11 @@ func EnsureDriveDownloadsDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return "", err
+		return "", fmt.Errorf("ensure drive downloads dir: %w", err)
 	}
+
 	return dir, nil
 }
 
@@ -82,6 +93,7 @@ func GmailAttachmentsDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return filepath.Join(dir, "gmail-attachments"), nil
 }
 
@@ -90,9 +102,11 @@ func EnsureGmailAttachmentsDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return "", err
+		return "", fmt.Errorf("ensure gmail attachments dir: %w", err)
 	}
+
 	return dir, nil
 }
 
@@ -101,6 +115,7 @@ func GmailWatchDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return filepath.Join(dir, "state", "gmail-watch"), nil
 }
 
@@ -109,8 +124,10 @@ func EnsureGmailWatchDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return "", err
+		return "", fmt.Errorf("ensure gmail watch dir: %w", err)
 	}
+
 	return dir, nil
 }

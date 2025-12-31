@@ -12,11 +12,12 @@ import (
 	"strings"
 	"testing"
 
+	"google.golang.org/api/drive/v3"
+	"google.golang.org/api/option"
+
 	"github.com/steipete/gogcli/internal/config"
 	"github.com/steipete/gogcli/internal/outfmt"
 	"github.com/steipete/gogcli/internal/ui"
-	"google.golang.org/api/drive/v3"
-	"google.golang.org/api/option"
 )
 
 func TestExecute_DriveGet_JSON(t *testing.T) {

@@ -10,10 +10,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/steipete/gogcli/internal/outfmt"
-	"github.com/steipete/gogcli/internal/ui"
 	"google.golang.org/api/option"
 	"google.golang.org/api/sheets/v4"
+
+	"github.com/steipete/gogcli/internal/outfmt"
+	"github.com/steipete/gogcli/internal/ui"
 )
 
 func TestSheetsCommands_JSON(t *testing.T) {

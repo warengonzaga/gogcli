@@ -44,6 +44,7 @@ func TestWaitPostSuccess_FullDuration(t *testing.T) {
 	if elapsed < 90*time.Millisecond {
 		t.Fatalf("waitPostSuccess returned too early: %v, expected ~100ms", elapsed)
 	}
+
 	if elapsed > 200*time.Millisecond {
 		t.Fatalf("waitPostSuccess took too long: %v, expected ~100ms", elapsed)
 	}

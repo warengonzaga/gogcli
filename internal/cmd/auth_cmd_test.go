@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/99designs/keyring"
+
 	"github.com/steipete/gogcli/internal/secrets"
 )
 

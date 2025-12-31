@@ -30,6 +30,7 @@ func Format(err error) string {
 	if errors.Is(err, keyring.ErrKeyNotFound) {
 		return "Secret not found in keyring (refresh token missing). Run: gog auth add <email>"
 	}
+
 	if errors.Is(err, os.ErrNotExist) {
 		return err.Error()
 	}
@@ -40,9 +41,11 @@ func Format(err error) string {
 		if len(gerr.Errors) > 0 && gerr.Errors[0].Reason != "" {
 			reason = gerr.Errors[0].Reason
 		}
+
 		if reason != "" {
 			return fmt.Sprintf("Google API error (%d %s): %s", gerr.Code, reason, gerr.Message)
 		}
+
 		return fmt.Sprintf("Google API error (%d): %s", gerr.Code, gerr.Message)
 	}
 

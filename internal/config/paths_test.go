@@ -14,9 +14,11 @@ func TestPaths_CreateDirs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EnsureDir: %v", err)
 	}
+
 	if _, statErr := os.Stat(dir); statErr != nil {
 		t.Fatalf("expected dir: %v", statErr)
 	}
+
 	if filepath.Base(dir) != AppName {
 		t.Fatalf("unexpected base: %q", filepath.Base(dir))
 	}
@@ -25,6 +27,7 @@ func TestPaths_CreateDirs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EnsureKeyringDir: %v", err)
 	}
+
 	if _, statErr := os.Stat(keyringDir); statErr != nil {
 		t.Fatalf("expected keyring dir: %v", statErr)
 	}
@@ -33,6 +36,7 @@ func TestPaths_CreateDirs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EnsureDriveDownloadsDir: %v", err)
 	}
+
 	if _, statErr := os.Stat(downloadsDir); statErr != nil {
 		t.Fatalf("expected downloads dir: %v", statErr)
 	}
@@ -41,6 +45,7 @@ func TestPaths_CreateDirs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EnsureGmailAttachmentsDir: %v", err)
 	}
+
 	if _, statErr := os.Stat(attachmentsDir); statErr != nil {
 		t.Fatalf("expected attachments dir: %v", statErr)
 	}
@@ -49,6 +54,7 @@ func TestPaths_CreateDirs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EnsureGmailWatchDir: %v", err)
 	}
+
 	if _, statErr := os.Stat(watchDir); statErr != nil {
 		t.Fatalf("expected watch dir: %v", statErr)
 	}
@@ -57,6 +63,7 @@ func TestPaths_CreateDirs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ClientCredentialsPath: %v", err)
 	}
+
 	if filepath.Base(credsPath) != "credentials.json" {
 		t.Fatalf("unexpected creds file: %q", filepath.Base(credsPath))
 	}

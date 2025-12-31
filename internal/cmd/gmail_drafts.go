@@ -7,10 +7,11 @@ import (
 	"os"
 	"strings"
 
+	"google.golang.org/api/gmail/v1"
+
 	"github.com/steipete/gogcli/internal/config"
 	"github.com/steipete/gogcli/internal/outfmt"
 	"github.com/steipete/gogcli/internal/ui"
-	"google.golang.org/api/gmail/v1"
 )
 
 type GmailDraftsCmd struct {
@@ -306,7 +307,7 @@ func (c *GmailDraftsCreateCmd) Run(ctx context.Context, flags *RootFlags) error 
 		if err != nil {
 			return fmt.Errorf("invalid --from address %q: %w", c.From, err)
 		}
-		if sa.VerificationStatus != "accepted" {
+		if sa.VerificationStatus != gmailVerificationAccepted {
 			return fmt.Errorf("--from address %q is not verified (status: %s)", c.From, sa.VerificationStatus)
 		}
 		fromAddr = c.From

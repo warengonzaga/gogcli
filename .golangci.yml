@@ -3,11 +3,20 @@ version: "2"
 linters:
   default: none
   enable:
+    - asciicheck
+    - bidichk
     - bodyclose
+    - containedctx
+    - contextcheck
     - cyclop
+    - depguard
     - dupword
+    - dupl
+    - err113
     - errcheck
     - errorlint
+    - forbidigo
+    - goconst
     - gocritic
     - gocyclo
     - gosec
@@ -17,24 +26,49 @@ linters:
     - misspell
     - nilerr
     - nilnil
+    - noctx
     - nolintlint
+    - paralleltest
     - prealloc
     - predeclared
     - revive
     - rowserrcheck
     - sqlclosecheck
     - staticcheck
+    - tagliatelle
+    - thelper
     - tparallel
+    - durationcheck
     - unparam
     - unused
     - wastedassign
     - whitespace
+    - wrapcheck
+    - wsl
 
   settings:
     cyclop:
       max-complexity: 50
+    dupl:
+      threshold: 150
+    depguard:
+      rules:
+        main:
+          list-mode: lax
+          files:
+            - $all
+          deny:
+            - pkg: io/ioutil
+              desc: "deprecated; use io or os"
+    goconst:
+      min-len: 3
+      min-occurrences: 4
     gocyclo:
       min-complexity: 50
+    forbidigo:
+      forbid:
+        - pattern: "^log\\."
+          msg: "avoid std log; use ui/logger"
     revive:
       rules:
         - name: blank-imports
@@ -43,6 +77,22 @@ linters:
         - name: import-shadowing
         - name: range
         - name: unnecessary-stmt
+    tagliatelle:
+      case:
+        rules:
+          json: snake
+          yaml: snake
+        overrides:
+          - pkg: github.com/steipete/gogcli/internal/cmd
+            ignore: true
+          - pkg: github.com/steipete/gogcli/internal/googleauth
+            ignore: true
+    wsl:
+      allow-cuddle-declarations: true
+      allow-assign-and-call: true
+      allow-assign-and-anything: true
+      allow-multiline-assign: true
+      allow-cuddle-used-in-block: true
     govet:
       enable-all: true
       disable:
@@ -58,6 +108,23 @@ linters:
           - cyclop
           - gocyclo
           - gosec
+          - dupl
+          - goconst
+          - tagliatelle
+          - paralleltest
+      - path: internal/cmd/.*\.go
+        linters:
+          - err113
+          - wrapcheck
+          - dupl
+          - wsl
+          - tagliatelle
+      - path: internal/googleauth/.*\.go
+        linters:
+          - tagliatelle
+      - path: cmd/.*\.go
+        linters:
+          - wsl
       - linters:
           - errcheck
         text: "Error return value of `fmt\\.Fprint"
@@ -67,3 +134,12 @@ linters:
       - linters:
           - staticcheck
         text: "QF1001"
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/steipete/gogcli

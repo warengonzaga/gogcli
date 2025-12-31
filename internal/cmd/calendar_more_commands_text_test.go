@@ -10,9 +10,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/steipete/gogcli/internal/ui"
 	"google.golang.org/api/calendar/v3"
 	"google.golang.org/api/option"
+
+	"github.com/steipete/gogcli/internal/ui"
 )
 
 func TestCalendarMoreCommands_Text(t *testing.T) {

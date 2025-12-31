@@ -17,6 +17,12 @@ type GmailGetCmd struct {
 	Headers   string `name:"headers" help:"Metadata headers (comma-separated; only for --format=metadata)"`
 }
 
+const (
+	gmailFormatFull     = "full"
+	gmailFormatMetadata = "metadata"
+	gmailFormatRaw      = "raw"
+)
+
 func (c *GmailGetCmd) Run(ctx context.Context, flags *RootFlags) error {
 	u := ui.FromContext(ctx)
 	account, err := requireAccount(flags)
@@ -30,10 +36,10 @@ func (c *GmailGetCmd) Run(ctx context.Context, flags *RootFlags) error {
 
 	format := strings.TrimSpace(c.Format)
 	if format == "" {
-		format = "full"
+		format = gmailFormatFull
 	}
 	switch format {
-	case "full", "metadata", "raw":
+	case gmailFormatFull, gmailFormatMetadata, gmailFormatRaw:
 	default:
 		return fmt.Errorf("invalid --format: %q (expected full|metadata|raw)", format)
 	}
@@ -44,7 +50,7 @@ func (c *GmailGetCmd) Run(ctx context.Context, flags *RootFlags) error {
 	}
 
 	call := svc.Users.Messages.Get("me", messageID).Format(format).Context(ctx)
-	if format == "metadata" {
+	if format == gmailFormatMetadata {
 		headerList := splitCSV(c.Headers)
 		if len(headerList) == 0 {
 			headerList = []string{"From", "To", "Subject", "Date"}
@@ -66,7 +72,7 @@ func (c *GmailGetCmd) Run(ctx context.Context, flags *RootFlags) error {
 	u.Out().Printf("label_ids\t%s", strings.Join(msg.LabelIds, ","))
 
 	switch format {
-	case "raw":
+	case gmailFormatRaw:
 		if msg.Raw == "" {
 			u.Err().Println("Empty raw message")
 			return nil
@@ -78,12 +84,12 @@ func (c *GmailGetCmd) Run(ctx context.Context, flags *RootFlags) error {
 		u.Out().Println("")
 		u.Out().Println(string(decoded))
 		return nil
-	case "metadata", "full":
+	case gmailFormatMetadata, gmailFormatFull:
 		u.Out().Printf("from\t%s", headerValue(msg.Payload, "From"))
 		u.Out().Printf("to\t%s", headerValue(msg.Payload, "To"))
 		u.Out().Printf("subject\t%s", headerValue(msg.Payload, "Subject"))
 		u.Out().Printf("date\t%s", headerValue(msg.Payload, "Date"))
-		if format == "full" {
+		if format == gmailFormatFull {
 			body := bestBodyText(msg.Payload)
 			if body != "" {
 				u.Out().Println("")

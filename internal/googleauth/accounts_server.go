@@ -164,6 +164,7 @@ func (ms *ManageServer) handleListAccounts(w http.ResponseWriter, r *http.Reques
 		if defaultEmail != "" {
 			isDefault = t.Email == defaultEmail
 		}
+
 		accounts = append(accounts, AccountInfo{
 			Email:     t.Email,
 			Services:  t.Services,
@@ -216,17 +217,20 @@ func (ms *ManageServer) handleAuthStart(w http.ResponseWriter, r *http.Request) 
 
 func (ms *ManageServer) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 	if q.Get("error") != "" {
 		w.WriteHeader(http.StatusOK)
 		renderCancelledPage(w)
+
 		return
 	}
 
 	if q.Get("state") != ms.oauthState {
 		w.WriteHeader(http.StatusBadRequest)
 		renderErrorPage(w, "State mismatch - possible CSRF attack. Please try again.")
+
 		return
 	}
 
@@ -234,6 +238,7 @@ func (ms *ManageServer) handleOAuthCallback(w http.ResponseWriter, r *http.Reque
 	if code == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		renderErrorPage(w, "Missing authorization code. Please try again.")
+
 		return
 	}
 
@@ -241,6 +246,7 @@ func (ms *ManageServer) handleOAuthCallback(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		renderErrorPage(w, "Failed to read credentials")
+
 		return
 	}
 
@@ -262,19 +268,21 @@ func (ms *ManageServer) handleOAuthCallback(w http.ResponseWriter, r *http.Reque
 		Scopes:       scopes,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 
 	tok, err := cfg.Exchange(ctx, code)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		renderErrorPage(w, "Failed to exchange code for token: "+err.Error())
+
 		return
 	}
 
 	if tok.RefreshToken == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		renderErrorPage(w, "No refresh token received. Try again with force-consent.")
+
 		return
 	}
 
@@ -299,6 +307,7 @@ func (ms *ManageServer) handleOAuthCallback(w http.ResponseWriter, r *http.Reque
 	}); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		renderErrorPage(w, "Failed to store token: "+err.Error())
+
 		return
 	}
 
@@ -321,6 +330,7 @@ func (ms *ManageServer) handleSetDefault(w http.ResponseWriter, r *http.Request)
 	var req struct {
 		Email string `json:"email"`
 	}
+
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSONError(w, "Invalid request", http.StatusBadRequest)
 		return
@@ -348,6 +358,7 @@ func (ms *ManageServer) handleRemoveAccount(w http.ResponseWriter, r *http.Reque
 	var req struct {
 		Email string `json:"email"`
 	}
+
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSONError(w, "Invalid request", http.StatusBadRequest)
 		return
@@ -364,8 +375,9 @@ func (ms *ManageServer) handleRemoveAccount(w http.ResponseWriter, r *http.Reque
 func generateCSRFToken() (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
-		return "", err
+		return "", fmt.Errorf("generate csrf token: %w", err)
 	}
+
 	return hex.EncodeToString(b), nil
 }
 

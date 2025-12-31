@@ -11,10 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/steipete/gogcli/internal/outfmt"
-	"github.com/steipete/gogcli/internal/ui"
 	"google.golang.org/api/gmail/v1"
 	"google.golang.org/api/option"
+
+	"github.com/steipete/gogcli/internal/outfmt"
+	"github.com/steipete/gogcli/internal/ui"
 )
 
 func TestGmailWatchRenewAndStop_JSON(t *testing.T) {

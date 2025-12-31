@@ -19,6 +19,8 @@ type exportViaDriveOptions struct {
 	FormatHelp    string
 }
 
+const defaultExportFormat = "pdf"
+
 func exportViaDrive(ctx context.Context, flags *RootFlags, opts exportViaDriveOptions, id string, outPathFlag string, format string) error {
 	u := ui.FromContext(ctx)
 	account, err := requireAccount(flags)
@@ -69,7 +71,7 @@ func exportViaDrive(ctx context.Context, flags *RootFlags, opts exportViaDriveOp
 		format = strings.TrimSpace(opts.DefaultFormat)
 	}
 	if format == "" {
-		format = "pdf"
+		format = defaultExportFormat
 	}
 
 	downloadedPath, size, err := downloadDriveFile(ctx, svc, meta, destPath, format)
