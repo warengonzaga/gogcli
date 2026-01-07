@@ -141,6 +141,8 @@ gog auth add you@gmail.com --services sheets --force-consent
 
 `--services all` is accepted as an alias for `user` for backwards compatibility.
 
+Docs uses the Google Docs API scope (`https://www.googleapis.com/auth/documents`), which is separate from Drive.
+
 ### Google Keep (Workspace only)
 
 The Google Keep API requires a service account with domain-wide delegation (Workspace).

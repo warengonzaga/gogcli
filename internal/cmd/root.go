@@ -11,6 +11,7 @@ import (
 
 	"github.com/steipete/gogcli/internal/config"
 	"github.com/steipete/gogcli/internal/errfmt"
+	"github.com/steipete/gogcli/internal/googleauth"
 	"github.com/steipete/gogcli/internal/outfmt"
 	"github.com/steipete/gogcli/internal/secrets"
 	"github.com/steipete/gogcli/internal/ui"
@@ -52,10 +53,11 @@ func Execute(args []string) (err error) {
 	envMode := outfmt.FromEnv()
 	expandHelp := os.Getenv("GOG_HELP") == "full" || os.Getenv("GOG_HELP_EXPAND") == "1"
 	vars := kong.Vars{
-		"color":   envOr("GOG_COLOR", "auto"),
-		"json":    boolString(envMode.JSON),
-		"plain":   boolString(envMode.Plain),
-		"version": VersionString(),
+		"color":         envOr("GOG_COLOR", "auto"),
+		"auth_services": googleauth.UserServiceCSV(),
+		"json":          boolString(envMode.JSON),
+		"plain":         boolString(envMode.Plain),
+		"version":       VersionString(),
 	}
 
 	cli := &CLI{}

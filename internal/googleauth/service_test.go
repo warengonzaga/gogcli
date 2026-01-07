@@ -96,6 +96,30 @@ func TestUserServices(t *testing.T) {
 	}
 }
 
+func TestUserServiceCSV(t *testing.T) {
+	want := "gmail,calendar,drive,docs,contacts,tasks,sheets,people"
+	if got := UserServiceCSV(); got != want {
+		t.Fatalf("unexpected user services csv: %q", got)
+	}
+}
+
+func TestServiceOrderCoverage(t *testing.T) {
+	seen := make(map[Service]bool)
+	for _, svc := range serviceOrder {
+		seen[svc] = true
+
+		if _, ok := serviceInfoByService[svc]; !ok {
+			t.Fatalf("missing info for %q", svc)
+		}
+	}
+
+	for svc := range serviceInfoByService {
+		if !seen[svc] {
+			t.Fatalf("service %q missing from order", svc)
+		}
+	}
+}
+
 func TestScopesForServices_UnionSorted(t *testing.T) {
 	scopes, err := ScopesForServices([]Service{ServiceContacts, ServiceGmail, ServiceTasks, ServicePeople, ServiceContacts})
 	if err != nil {

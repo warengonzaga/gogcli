@@ -303,7 +303,7 @@ type AuthAddCmd struct {
 	Email        string `arg:"" name:"email" help:"Email"`
 	Manual       bool   `name:"manual" help:"Browserless auth flow (paste redirect URL)"`
 	ForceConsent bool   `name:"force-consent" help:"Force consent screen to obtain a refresh token"`
-	ServicesCSV  string `name:"services" help:"Services to authorize: user|all or comma-separated gmail,calendar,drive,docs,contacts,tasks,sheets,people (Keep uses service account: gog auth keep)" default:"user"`
+	ServicesCSV  string `name:"services" help:"Services to authorize: user|all or comma-separated ${auth_services} (Keep uses service account: gog auth keep)" default:"user"`
 }
 
 func (c *AuthAddCmd) Run(ctx context.Context) error {
@@ -509,7 +509,7 @@ func (c *AuthRemoveCmd) Run(ctx context.Context, flags *RootFlags) error {
 
 type AuthManageCmd struct {
 	ForceConsent bool          `name:"force-consent" help:"Force consent screen when adding accounts"`
-	ServicesCSV  string        `name:"services" help:"Services to authorize: user|all or comma-separated gmail,calendar,drive,docs,contacts,tasks,sheets,people (Keep uses service account: gog auth keep)" default:"user"`
+	ServicesCSV  string        `name:"services" help:"Services to authorize: user|all or comma-separated ${auth_services} (Keep uses service account: gog auth keep)" default:"user"`
 	Timeout      time.Duration `name:"timeout" help:"Server timeout duration" default:"10m"`
 }
 

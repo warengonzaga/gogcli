@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/alecthomas/kong"
+
+	"github.com/steipete/gogcli/internal/googleauth"
 )
 
 func captureStdout(t *testing.T, fn func()) string {
@@ -72,6 +74,9 @@ func runKong(t *testing.T, cmd any, args []string, ctx context.Context, flags *R
 
 	parser, err := kong.New(
 		cmd,
+		kong.Vars(kong.Vars{
+			"auth_services": googleauth.UserServiceCSV(),
+		}),
 		kong.Writers(io.Discard, io.Discard),
 		kong.Exit(func(code int) { panic(exitPanic{code: code}) }),
 	)

@@ -23,52 +23,95 @@ const (
 
 var errUnknownService = errors.New("unknown service")
 
+type serviceInfo struct {
+	scopes []string
+	user   bool
+}
+
+var serviceOrder = []Service{
+	ServiceGmail,
+	ServiceCalendar,
+	ServiceDrive,
+	ServiceDocs,
+	ServiceContacts,
+	ServiceTasks,
+	ServiceSheets,
+	ServicePeople,
+	ServiceKeep,
+}
+
+var serviceInfoByService = map[Service]serviceInfo{
+	ServiceGmail: {
+		scopes: []string{"https://mail.google.com/"},
+		user:   true,
+	},
+	ServiceCalendar: {
+		scopes: []string{"https://www.googleapis.com/auth/calendar"},
+		user:   true,
+	},
+	ServiceDrive: {
+		scopes: []string{"https://www.googleapis.com/auth/drive"},
+		user:   true,
+	},
+	ServiceDocs: {
+		scopes: []string{"https://www.googleapis.com/auth/documents"},
+		user:   true,
+	},
+	ServiceContacts: {
+		scopes: []string{
+			"https://www.googleapis.com/auth/contacts",
+			"https://www.googleapis.com/auth/contacts.other.readonly",
+			"https://www.googleapis.com/auth/directory.readonly",
+		},
+		user: true,
+	},
+	ServiceTasks: {
+		scopes: []string{"https://www.googleapis.com/auth/tasks"},
+		user:   true,
+	},
+	ServicePeople: {
+		// Needed for "people/me" requests.
+		scopes: []string{"profile"},
+		user:   true,
+	},
+	ServiceSheets: {
+		scopes: []string{"https://www.googleapis.com/auth/spreadsheets"},
+		user:   true,
+	},
+	ServiceKeep: {
+		scopes: []string{"https://www.googleapis.com/auth/keep"},
+		user:   false,
+	},
+}
+
 func ParseService(s string) (Service, error) {
-	switch Service(strings.ToLower(strings.TrimSpace(s))) {
-	case ServiceGmail, ServiceCalendar, ServiceDrive, ServiceDocs, ServiceContacts, ServiceTasks, ServicePeople, ServiceSheets, ServiceKeep:
-		return Service(strings.ToLower(strings.TrimSpace(s))), nil
-	default:
-		return "", fmt.Errorf("%w %q (expected gmail|calendar|drive|docs|contacts|tasks|people|sheets|keep)", errUnknownService, s)
+	parsed := Service(strings.ToLower(strings.TrimSpace(s)))
+	if _, ok := serviceInfoByService[parsed]; ok {
+		return parsed, nil
 	}
+
+	return "", fmt.Errorf("%w %q (expected %s)", errUnknownService, s, serviceNames(AllServices(), "|"))
 }
 
 // UserServices are the default OAuth services intended for consumer ("regular") accounts.
 func UserServices() []Service {
-	return []Service{ServiceGmail, ServiceCalendar, ServiceDrive, ServiceDocs, ServiceContacts, ServiceTasks, ServicePeople, ServiceSheets}
+	return filteredServices(func(info serviceInfo) bool { return info.user })
 }
 
 func AllServices() []Service {
-	return append(UserServices(), ServiceKeep)
+	out := make([]Service, len(serviceOrder))
+	copy(out, serviceOrder)
+
+	return out
 }
 
 func Scopes(service Service) ([]string, error) {
-	switch service {
-	case ServiceGmail:
-		return []string{"https://mail.google.com/"}, nil
-	case ServiceCalendar:
-		return []string{"https://www.googleapis.com/auth/calendar"}, nil
-	case ServiceDrive:
-		return []string{"https://www.googleapis.com/auth/drive"}, nil
-	case ServiceDocs:
-		return []string{"https://www.googleapis.com/auth/documents"}, nil
-	case ServiceContacts:
-		return []string{
-			"https://www.googleapis.com/auth/contacts",
-			"https://www.googleapis.com/auth/contacts.other.readonly",
-			"https://www.googleapis.com/auth/directory.readonly",
-		}, nil
-	case ServiceTasks:
-		return []string{"https://www.googleapis.com/auth/tasks"}, nil
-	case ServicePeople:
-		// Needed for "people/me" requests.
-		return []string{"profile"}, nil
-	case ServiceSheets:
-		return []string{"https://www.googleapis.com/auth/spreadsheets"}, nil
-	case ServiceKeep:
-		return []string{"https://www.googleapis.com/auth/keep"}, nil
-	default:
+	info, ok := serviceInfoByService[service]
+	if !ok {
 		return nil, errUnknownService
 	}
+
+	return append([]string(nil), info.scopes...), nil
 }
 
 func ScopesForServices(services []Service) ([]string, error) {
@@ -93,4 +136,33 @@ func ScopesForServices(services []Service) ([]string, error) {
 	sort.Strings(out)
 
 	return out, nil
+}
+
+func UserServiceCSV() string {
+	return serviceNames(UserServices(), ",")
+}
+
+func serviceNames(services []Service, sep string) string {
+	names := make([]string, 0, len(services))
+	for _, svc := range services {
+		names = append(names, string(svc))
+	}
+
+	return strings.Join(names, sep)
+}
+
+func filteredServices(include func(info serviceInfo) bool) []Service {
+	out := make([]Service, 0, len(serviceOrder))
+	for _, svc := range serviceOrder {
+		info, ok := serviceInfoByService[svc]
+		if !ok {
+			continue
+		}
+
+		if include == nil || include(info) {
+			out = append(out, svc)
+		}
+	}
+
+	return out
 }
