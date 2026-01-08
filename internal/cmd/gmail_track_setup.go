@@ -4,7 +4,9 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -31,11 +33,16 @@ func (c *GmailTrackSetupCmd) Run(ctx context.Context, flags *RootFlags) error {
 		c.WorkerURL = strings.TrimSpace(cfg.WorkerURL)
 	}
 	if c.WorkerURL == "" && !flags.NoInput {
-		u.Err().Println("Tracking worker base URL (e.g. https://...workers.dev): ")
-		line, readErr := input.ReadLine(os.Stdin)
-		if readErr == nil {
-			c.WorkerURL = strings.TrimSpace(line)
+		line, readErr := input.PromptLine(ctx, "Tracking worker base URL (e.g. https://...workers.dev): ")
+		if readErr != nil {
+			if errors.Is(readErr, io.EOF) || errors.Is(readErr, os.ErrClosed) {
+				return &ExitError{Code: 1, Err: errors.New("cancelled")}
+			}
+
+			return fmt.Errorf("read worker url: %w", readErr)
 		}
+
+		c.WorkerURL = strings.TrimSpace(line)
 	}
 	c.WorkerURL = strings.TrimSpace(c.WorkerURL)
 	if c.WorkerURL == "" {
