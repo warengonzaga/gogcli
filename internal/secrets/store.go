@@ -48,6 +48,7 @@ var (
 	errMissingSecretKey      = errors.New("missing secret key")
 	errNoTTY                 = errors.New("no TTY available for keyring file backend password prompt")
 	errInvalidKeyringBackend = errors.New("invalid keyring backend")
+	openKeyringFunc          = openKeyring
 )
 
 type KeyringBackendInfo struct {
@@ -163,7 +164,7 @@ func openKeyring() (keyring.Keyring, error) {
 }
 
 func OpenDefault() (Store, error) {
-	ring, err := openKeyring()
+	ring, err := openKeyringFunc()
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +178,7 @@ func SetSecret(key string, value []byte) error {
 		return errMissingSecretKey
 	}
 
-	ring, err := openKeyring()
+	ring, err := openKeyringFunc()
 	if err != nil {
 		return err
 	}
@@ -198,7 +199,7 @@ func GetSecret(key string) ([]byte, error) {
 		return nil, errMissingSecretKey
 	}
 
-	ring, err := openKeyring()
+	ring, err := openKeyringFunc()
 	if err != nil {
 		return nil, err
 	}
