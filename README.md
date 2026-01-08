@@ -143,11 +143,21 @@ gog auth add you@gmail.com --services sheets --force-consent
 
 Docs commands are implemented via the Drive API, and `docs` requests both Drive and Docs API scopes.
 
-To render a Markdown table of services and scopes:
+Service scope matrix (auto-generated; run `go run scripts/gen-auth-services-md.go`):
 
-```bash
-gog auth services --markdown
-```
+<!-- auth-services:start -->
+| Service | User | APIs | Scopes | Notes |
+| --- | --- | --- | --- | --- |
+| gmail | yes | Gmail API | `https://mail.google.com/` |  |
+| calendar | yes | Calendar API | `https://www.googleapis.com/auth/calendar` |  |
+| drive | yes | Drive API | `https://www.googleapis.com/auth/drive` |  |
+| docs | yes | Docs API, Drive API | `https://www.googleapis.com/auth/drive`<br>`https://www.googleapis.com/auth/documents` | Export/copy/create via Drive |
+| contacts | yes | People API | `https://www.googleapis.com/auth/contacts`<br>`https://www.googleapis.com/auth/contacts.other.readonly`<br>`https://www.googleapis.com/auth/directory.readonly` | Contacts + other contacts + directory |
+| tasks | yes | Tasks API | `https://www.googleapis.com/auth/tasks` |  |
+| sheets | yes | Sheets API, Drive API | `https://www.googleapis.com/auth/spreadsheets` | Export via Drive |
+| people | yes | People API | `profile` | OIDC profile scope |
+| keep | no | Keep API | `https://www.googleapis.com/auth/keep` | Workspace only; service account |
+<!-- auth-services:end -->
 
 ### Google Keep (Workspace only)
 
