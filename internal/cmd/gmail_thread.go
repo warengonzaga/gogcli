@@ -1,17 +1,21 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"mime"
+	"mime/quotedprintable"
 	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
+	"golang.org/x/net/html/charset"
 	"google.golang.org/api/gmail/v1"
 
 	"github.com/steipete/gogcli/internal/config"
@@ -367,6 +371,9 @@ func bestBodyForDisplay(p *gmail.MessagePart) (string, bool) {
 	}
 	plain := findPartBody(p, "text/plain")
 	if plain != "" {
+		if looksLikeHTML(plain) {
+			return plain, true
+		}
 		return plain, false
 	}
 	html := findPartBody(p, "text/html")
@@ -381,7 +388,7 @@ func findPartBody(p *gmail.MessagePart, mimeType string) string {
 		return ""
 	}
 	if mimeTypeMatches(p.MimeType, mimeType) && p.Body != nil && p.Body.Data != "" {
-		s, err := decodeBase64URL(p.Body.Data)
+		s, err := decodePartBody(p)
 		if err == nil {
 			return s
 		}
@@ -413,14 +420,141 @@ func normalizeMimeType(value string) string {
 	return value
 }
 
-func decodeBase64URL(s string) (string, error) {
-	b, err := base64.RawURLEncoding.DecodeString(s)
+func looksLikeHTML(value string) bool {
+	trimmed := strings.TrimSpace(strings.ToLower(value))
+	if trimmed == "" {
+		return false
+	}
+	return strings.HasPrefix(trimmed, "<!doctype") ||
+		strings.HasPrefix(trimmed, "<html") ||
+		strings.HasPrefix(trimmed, "<head") ||
+		strings.HasPrefix(trimmed, "<body") ||
+		strings.HasPrefix(trimmed, "<meta") ||
+		strings.Contains(trimmed, "<html")
+}
+
+func decodePartBody(p *gmail.MessagePart) (string, error) {
+	if p == nil || p.Body == nil || p.Body.Data == "" {
+		return "", nil
+	}
+	raw, err := decodeBase64URLBytes(p.Body.Data)
 	if err != nil {
-		// Gmail can return padded base64url; accept both.
-		b, err = base64.URLEncoding.DecodeString(s)
-		if err != nil {
-			return "", err
+		return "", err
+	}
+
+	decoded := raw
+	if cte := strings.TrimSpace(headerValue(p, "Content-Transfer-Encoding")); cte != "" {
+		decoded = decodeTransferEncoding(decoded, cte)
+	}
+
+	if contentType := strings.TrimSpace(headerValue(p, "Content-Type")); contentType != "" {
+		decoded = decodeBodyCharset(decoded, contentType)
+	}
+
+	return string(decoded), nil
+}
+
+func decodeTransferEncoding(data []byte, encoding string) []byte {
+	switch strings.ToLower(strings.TrimSpace(encoding)) {
+	case "base64":
+		if !looksLikeBase64(data) {
+			return data
 		}
+		if decoded, err := decodeAnyBase64(data); err == nil {
+			return decoded
+		}
+	case "quoted-printable":
+		if decoded, err := io.ReadAll(quotedprintable.NewReader(bytes.NewReader(data))); err == nil {
+			return decoded
+		}
+	}
+	return data
+}
+
+func decodeBodyCharset(data []byte, contentType string) []byte {
+	_, params, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return data
+	}
+	charsetLabel := strings.TrimSpace(params["charset"])
+	if charsetLabel == "" || strings.EqualFold(charsetLabel, "utf-8") {
+		return data
+	}
+	reader, err := charset.NewReaderLabel(charsetLabel, bytes.NewReader(data))
+	if err != nil {
+		return data
+	}
+	decoded, err := io.ReadAll(reader)
+	if err != nil {
+		return data
+	}
+	return decoded
+}
+
+func looksLikeBase64(data []byte) bool {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return false
+	}
+	for _, b := range trimmed {
+		switch {
+		case b >= 'A' && b <= 'Z':
+		case b >= 'a' && b <= 'z':
+		case b >= '0' && b <= '9':
+		case b == '+', b == '/', b == '=', b == '-', b == '_':
+		case b == '\n', b == '\r', b == '\t', b == ' ':
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+func decodeAnyBase64(data []byte) ([]byte, error) {
+	cleaned := stripBase64Whitespace(data)
+	str := string(cleaned)
+	if decoded, err := base64.StdEncoding.DecodeString(str); err == nil {
+		return decoded, nil
+	}
+	if decoded, err := base64.RawStdEncoding.DecodeString(str); err == nil {
+		return decoded, nil
+	}
+	if decoded, err := base64.URLEncoding.DecodeString(str); err == nil {
+		return decoded, nil
+	}
+	return base64.RawURLEncoding.DecodeString(str)
+}
+
+func stripBase64Whitespace(data []byte) []byte {
+	out := make([]byte, 0, len(data))
+	for _, b := range data {
+		switch b {
+		case '\n', '\r', '\t', ' ':
+			continue
+		default:
+			out = append(out, b)
+		}
+	}
+	return out
+}
+
+func decodeBase64URLBytes(s string) ([]byte, error) {
+	if b, err := base64.RawURLEncoding.DecodeString(s); err == nil {
+		return b, nil
+	}
+	if b, err := base64.URLEncoding.DecodeString(s); err == nil {
+		return b, nil
+	}
+	if b, err := base64.RawStdEncoding.DecodeString(s); err == nil {
+		return b, nil
+	}
+	return base64.StdEncoding.DecodeString(s)
+}
+
+func decodeBase64URL(s string) (string, error) {
+	b, err := decodeBase64URLBytes(s)
+	if err != nil {
+		return "", err
 	}
 	return string(b), nil
 }

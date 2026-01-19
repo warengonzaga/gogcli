@@ -20,6 +20,7 @@ var newGmailService = googleapi.NewGmail
 
 type GmailCmd struct {
 	Search     GmailSearchCmd     `cmd:"" name:"search" group:"Read" help:"Search threads using Gmail query syntax"`
+	Messages   GmailMessagesCmd   `cmd:"" name:"messages" group:"Read" help:"Message operations"`
 	Thread     GmailThreadCmd     `cmd:"" name:"thread" aliases:"read" group:"Organize" help:"Thread operations (get, modify)"`
 	Get        GmailGetCmd        `cmd:"" name:"get" group:"Read" help:"Get a message (full|metadata|raw)"`
 	Attachment GmailAttachmentCmd `cmd:"" name:"attachment" group:"Read" help:"Download a single attachment"`

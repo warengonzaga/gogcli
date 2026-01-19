@@ -977,6 +977,16 @@ THREAD_ID           SUBJECT                           FROM                  DATE
 16d1c2b3a4e5f6d7    Project update                    bob@example.com       2025-01-08
 ```
 
+Message-level search (one row per email):
+
+```bash
+$ gog gmail messages search 'newer_than:7d' --max 3
+ID                  THREAD             SUBJECT                           FROM                  DATE
+18f1a2b3c4d5e6f7    9e8d7c6b5a4f3e2d    Meeting notes                     alice@example.com     2025-01-10
+17e1d2c3b4a5f6e7    9e8d7c6b5a4f3e2d    Invoice #12345                    billing@vendor.com    2025-01-09
+16d1c2b3a4e5f6d7    7f6e5d4c3b2a1908    Project update                    bob@example.com       2025-01-08
+```
+
 ### JSON
 
 Machine-readable output for scripting and automation:
@@ -989,6 +999,22 @@ $ gog gmail search 'newer_than:7d' --max 3 --json
       "id": "18f1a2b3c4d5e6f7",
       "snippet": "Meeting notes from today...",
       "messages": [...]
+    },
+    ...
+  ]
+}
+```
+
+```bash
+$ gog gmail messages search 'newer_than:7d' --max 3 --json
+{
+  "messages": [
+    {
+      "id": "18f1a2b3c4d5e6f7",
+      "threadId": "9e8d7c6b5a4f3e2d",
+      "subject": "Meeting notes",
+      "from": "alice@example.com",
+      "date": "2025-01-10"
     },
     ...
   ]
